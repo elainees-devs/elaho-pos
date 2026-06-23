@@ -1,0 +1,130 @@
+from pathlib import Pat
+from .logging import *
+from .security import *
+
+# ==================================================
+# Base Directory
+# ==================================================
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# ==================================================
+# Applications
+# ==================================================
+
+DJANGO_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+]
+
+THIRD_PARTY_APPS = [
+    # Example:
+    # "rest_framework",
+    # "corsheaders",
+]
+
+LOCAL_APPS = [
+    "apps.users",
+    "apps.businesses",
+    "apps.inventory",
+    "apps.sales",
+    "apps.expenses",
+    "apps.reports",
+    "apps.pos_sync",
+    "apps.audit_logs",
+]
+
+INSTALLED_APPS = (
+    DJANGO_APPS
+    + THIRD_PARTY_APPS
+    + LOCAL_APPS
+)
+
+# ==================================================
+# Middleware
+# ==================================================
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+# ==================================================
+# URL Configuration
+# ==================================================
+
+ROOT_URLCONF = "config.urls"
+
+# ==================================================
+# Templates
+# ==================================================
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [
+            BASE_DIR / "templates",
+        ],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+# ==================================================
+# WSGI / ASGI
+# ==================================================
+
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
+
+# ==================================================
+# Internationalization
+# ==================================================
+
+LANGUAGE_CODE = "en-us"
+
+TIME_ZONE = "Africa/Nairobi"
+
+USE_I18N = True
+USE_TZ = True
+
+# ==================================================
+# Static Files
+# ==================================================
+
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# ==================================================
+# Media Files
+# ==================================================
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# ==================================================
+# Default Primary Key
+# ==================================================
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# ==================================================
+# Custom User Model
+# ==================================================
+
+AUTH_USER_MODEL = "users.User"

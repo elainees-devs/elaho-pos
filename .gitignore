@@ -1,0 +1,66 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# plans
+.plans
+
+# =========================
+# Django
+# =========================
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# Local settings
+*.env
+.env
+.env.*
+
+# Django migrations (optional if you regenerate in dev)
+# */migrations/*.py
+# */migrations/*.pyc
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Testing / Coverage
+# =========================
+htmlcov/
+.coverage
+.pytest_cache/
+
+# =========================
+# Node (if frontend exists)
+# =========================
+node_modules/
+dist/
+build/
+
+# =========================
+# Docker (optional)
+# =========================
+docker-compose.override.yml

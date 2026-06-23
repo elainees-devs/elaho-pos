@@ -1,0 +1,91 @@
+# =========================
+# Core Django Framework
+# =========================
+Django>=5.0,<6.0                     # Main web framework
+djangorestframework>=3.15.0          # REST API development
+
+# =========================
+# Database
+# =========================
+psycopg[binary]>=3.2.0               # PostgreSQL database driver
+dj-database-url>=2.2.0               # Parse DATABASE_URL from environment
+
+# =========================
+# Authentication & Security
+# =========================
+djangorestframework-simplejwt>=5.3.1 # JWT authentication for APIs
+django-cors-headers>=4.4.0           # CORS support for React frontend
+cryptography>=43.0.0                # Encryption, certificates, secure integrations
+
+# =========================
+# Environment Configuration
+# =========================
+python-dotenv>=1.0.1                 # Load environment variables from .env
+
+# =========================
+# API Documentation
+# =========================
+drf-spectacular>=0.27.2              # OpenAPI / Swagger documentation
+
+# =========================
+# Querying & Filtering
+# =========================
+django-filter>=24.3                  # DRF filtering support
+
+# =========================
+# Background Jobs & Sync
+# =========================
+redis>=5.0.7                         # Redis cache and message broker
+celery>=5.4.0                        # Background task processing
+
+# =========================
+# Production Server
+# =========================
+gunicorn>=22.0.0                     # Production WSGI server
+whitenoise>=6.7.0                    # Static file serving
+
+# =========================
+# External Integrations
+# =========================
+requests>=2.32.3                     # HTTP requests (M-Pesa, eTIMS, APIs)
+xmltodict>=0.14.2                    # XML parsing for eTIMS integration
+
+# =========================
+# Data Validation & Utilities
+# =========================
+pydantic>=2.8.2                      # Data validation and schemas
+
+# =========================
+# Reporting & Analytics
+# =========================
+pandas>=2.2.2                        # Reporting and data analysis
+openpyxl>=3.1.5                      # Excel export/import support
+
+# =========================
+# File & Image Processing
+# =========================
+Pillow>=10.4.0                       # Image processing
+
+# =========================
+# Audit Trails
+# =========================
+django-simple-history>=3.7.0         # Model history tracking and audit logs
+
+# =========================
+# Development Tools
+# =========================
+django-extensions>=3.2.3             # Useful Django management commands
+ipython>=8.27.0                      # Enhanced Django shell
+
+# =========================
+# Testing
+# =========================
+pytest>=8.3.2                        # Testing framework
+pytest-django>=4.8.0                 # Django integration for pytest
+factory-boy>=3.3.1                   # Test data factories
+
+# =========================
+# Code Quality
+# =========================
+ruff>=0.6.5                          # Fast Python linter
+black>=24.8.0                        # Code formatter
