@@ -1,45 +1,157 @@
+from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinLengthValidator
 from django.db import models
 
-
-class User:
-
-    # 1. Define user base class properties
-    # - email (read-only or validated property)
-    # - role (controlled via getter/setter)
-    # - is_active (boolean property with validation)
-    # - derived properties like is_staff, is_owner, is_superadmin
-    pass
+from .managers import UserManager
 
 
-class SuperAdmin:
+class User(AbstractUser):
+    """
+    User model.
 
-    # 2. Define super admin class
-    # - inherits from User
-    # - overrides or extends permissions behavior
-    # - always returns full access flags (all permissions = True)
-    # - may include extra properties like system-level access rights
-    pass
+    Responsibility:
+        Store the identity and account state of a system user.
+
+    This model intentionally does NOT contain:
+        - Role or permission logic
+        - Business rules
+        - Application workflows
+
+    Those responsibilities belong to dedicated models and services.
+    """
+
+    # Remove username authentication.
+    username = None
+
+    # ------------------------------------------------------------------
+    # Authentication
+    # ------------------------------------------------------------------
+
+    # Email is used as the unique login identifier.
+    email = models.EmailField(
+        unique=True,
+        db_index=True,
+        help_text="Unique email address used for authentication.",
+    )
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
+
+    # ------------------------------------------------------------------
+    # Personal Information
+    # ------------------------------------------------------------------
+
+    first_name = models.CharField(
+        max_length=50,
+        validators=[MinLengthValidator(2)],
+        help_text="User's first name.",
+    )
+
+    last_name = models.CharField(
+        max_length=50,
+        validators=[MinLengthValidator(2)],
+        help_text="User's last name.",
+    )
+
+    # Optional contact number.
+    phone = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Optional phone number.",
+    )
+
+    # ------------------------------------------------------------------
+    # Relationships
+    # ------------------------------------------------------------------
+
+    # Business role assigned to the user.
+    # Authorization is resolved elsewhere.
+    role = models.ForeignKey(
+        "roles.Role",
+        on_delete=models.PROTECT,
+        related_name="users",
+        null=True,
+        blank=True,
+        help_text="Assigned role.",
+    )
+
+    # ------------------------------------------------------------------
+    # Audit Information
+    # ------------------------------------------------------------------
+
+    # Automatically updated whenever the user record changes.
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Last modification timestamp.",
+    )
+
+    # Soft-delete flag.
+    # Historical records remain intact instead of being permanently removed.
+    is_deleted = models.BooleanField(
+        default=False,
+        help_text="Indicates whether the user has been archived.",
+    )
+
+    # Custom manager supporting email authentication.
+    objects = UserManager()
+
+    class Meta:
+        db_table = "users"
+        ordering = ["first_name", "last_name"]
+        verbose_name = "User"
+        verbose_name_plural = "Users"
+
+   # ------------------------------------------------------------------
+   # Model Lifecycle
+   # ------------------------------------------------------------------
+
+def clean(self):
+    """
+    Normalize user data before validation.
+    """
+    super().clean()
+
+    if self.email:
+        self.email = self.email.strip().lower()
+
+    if self.first_name:
+        self.first_name = self.first_name.strip().title()
+
+    if self.last_name:
+        self.last_name = self.last_name.strip().title()
 
 
-class Manager:
+def save(self, *args, **kwargs):
+    """
+    Normalize and validate data before saving.
+    """
+    self.full_clean()
+    super().save(*args, **kwargs)
 
-    # 3. Define manager class
-    # - inherits from User
-    # - handles business-level operations (store management logic)
-    # - can approve/override staff actions (e.g. refunds, discounts)
-    # - has limited admin permissions (not full system control)
-    # - can access reports, inventory management, and sales summaries
-    # - cannot modify system-level settings or superadmin privileges
-    pass
+    # ------------------------------------------------------------------
+    # Read-only Properties
+    # ------------------------------------------------------------------
 
+    @property
+    def full_name(self):
+        """
+        Returns the user's full name.
+        """
+        return f"{self.first_name} {self.last_name}".strip()
 
-class Staff:
+    @property
+    def created_at(self):
+        """
+        Alias for the account creation timestamp.
+        """
+        return self.date_joined
 
-    # 4. Define staff class
-    # - inherits from User
-    # - handles daily operational tasks (sales, customer service)
-    # - can create sales transactions but with restricted permissions
-    # - cannot approve refunds or modify inventory levels
-    # - cannot access financial reports or admin settings
-    # - works under manager supervision
-    pass
+    # ------------------------------------------------------------------
+    # String Representation
+    # ------------------------------------------------------------------
+
+    def __str__(self):
+        """
+        Human-readable representation of the user.
+        """
+        return self.full_name or self.email
