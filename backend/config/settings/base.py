@@ -38,9 +38,7 @@ LOCAL_APPS = [
     "apps.audit_logs",
 ]
 
-INSTALLED_APPS = (
-    "rest_framework",
-)
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # ==================================================
 # Middleware
