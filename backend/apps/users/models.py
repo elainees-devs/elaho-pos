@@ -74,7 +74,11 @@ class User(AbstractUser):
         blank=True,
         help_text="Assigned role.",
     )
-    is_active = models.BooleanField(default=True)
+
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Indicates whether the user account is active.",
+    )
 
     # ------------------------------------------------------------------
     # Audit Information
@@ -87,7 +91,6 @@ class User(AbstractUser):
     )
 
     # Soft-delete flag.
-    # Historical records remain intact instead of being permanently removed.
     is_deleted = models.BooleanField(
         default=False,
         help_text="Indicates whether the user has been archived.",
@@ -102,32 +105,34 @@ class User(AbstractUser):
         verbose_name = "User"
         verbose_name_plural = "Users"
 
-   # ------------------------------------------------------------------
-   # Model Lifecycle
-   # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Model Lifecycle
+    # ------------------------------------------------------------------
 
-def clean(self):
-    """
-    Normalize user data before validation.
-    """
-    super().clean()
+    def clean(self):
+        """
+        Normalize user data before validation.
+        """
 
-    if self.email:
-        self.email = self.email.strip().lower()
+        # Normalize first
+        if self.email:
+            self.email = self.email.strip().lower()
 
-    if self.first_name:
-        self.first_name = self.first_name.strip().title()
+        if self.first_name:
+            self.first_name = self.first_name.strip().title()
 
-    if self.last_name:
-        self.last_name = self.last_name.strip().title()
+        if self.last_name:
+            self.last_name = self.last_name.strip().title()
 
+        # Then run Django validation
+        super().clean()
 
-def save(self, *args, **kwargs):
-    """
-    Normalize and validate data before saving.
-    """
-    self.full_clean()
-    super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        """
+        Normalize and validate data before saving.
+        """
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     # ------------------------------------------------------------------
     # Read-only Properties
