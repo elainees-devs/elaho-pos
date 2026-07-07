@@ -29,6 +29,6 @@ urlpatterns = [
     # Roles API endpoints
     path(
         "api/",
-        include("roles.urls")
+        include("apps.roles.urls")
     ),
 ]
