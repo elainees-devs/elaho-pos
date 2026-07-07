@@ -2,6 +2,8 @@ from rest_framework import viewsets
 
 from ..models import RolePermission
 from ..serializers import RolePermissionSerializer
+
+
 class RolePermissionViewSet(viewsets.ModelViewSet):
     """
 ViewSet for managing RolePermission resources.
@@ -15,6 +17,5 @@ Provides the following REST API operations:
 - PATCH  /role-permissions/{id}/     Partially update a role permission assignment
 - DELETE /role-permissions/{id}/     Delete a role permission assignment
 """
-    class Meta:
-        queryset = RolePermission.object.all()
-        serialize_class = RolePermissionSerializer
+    queryset = RolePermission.objects.all()
+    serializer_class = RolePermissionSerializer
