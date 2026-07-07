@@ -16,7 +16,21 @@ class RolePermission(models.Model):
         related_name = "roles"
     )
 
-    created_at = models.DateTimeField(auto_now_add = True)
+    # ------------------------------------------------------------------
+    # Audit Information
+    # ------------------------------------------------------------------
+
+    # Automatically set when the role_permission is created.
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Creation timestamp.",
+    )
+
+    # Automatically updated whenever the role_permission changes.
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Last modification timestamp.",
+    )
 
     class Meta:
         unique_together = (
