@@ -1,4 +1,3 @@
-from rest_framework import serializers
 """
 ==================================================
 Role Serializer
@@ -33,8 +32,32 @@ Business rules belong in services or models, while
 request handling belongs in views.
 """
 
-class RoleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = "Role"
-        fields = "__all__"
+from rest_framework import serializers
 
+from roles.models import Role
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Role model.
+
+    Converts Role model instances into JSON responses and
+    validates incoming JSON data before creating or updating
+    Role records.
+    """
+    class Meta:
+        model = Role
+        fields = (
+            "id",
+            "name",
+            "description",
+            "level",
+            "is_active",
+            "created_at",
+            "updated_at",
+        )
+    read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+        )
