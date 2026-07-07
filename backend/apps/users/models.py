@@ -74,6 +74,7 @@ class User(AbstractUser):
         blank=True,
         help_text="Assigned role.",
     )
+    is_active = models.BooleanField(default=True)
 
     # ------------------------------------------------------------------
     # Audit Information
