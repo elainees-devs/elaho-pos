@@ -3,131 +3,102 @@ from django.db import models
 
 class Role(models.Model):
     """
-    CORE IDEA (SOLID DESIGN):
+    Role model.
 
-    This class represents ONLY a user role.
+    Responsibility:
+        Store role information only.
 
-    A role is simply a category assigned to a user.
-
-    Examples:
-    - SuperAdmin
-    - Manager
-    - Staff
-
-    It MUST NOT contain:
-    - permission logic
-    - authentication logic
-    - authorization rules
-    - business logic
-    - sales logic
-    - inventory logic
-
-    Those responsibilities belong to:
-    - Permission models
-    - Authorization services
-    - Business services
+    A role groups users under a common category (e.g. SuperAdmin,
+    Manager, Staff). It does not determine permissions or application
+    behavior. Authorization is handled by the permission and service
+    layers.
     """
 
-    # -----------------------------
-    # 1. ROLE IDENTITY (SRP)
-    # -----------------------------
+    # ------------------------------------------------------------------
+    # Role Information
+    # ------------------------------------------------------------------
 
-    # name:
-    # - unique role name
-    # - identifies the role within the system
-    #
-    # Examples:
-    # - SuperAdmin
-    # - Manager
-    # - Staff
+    # Unique role name.
+    name = models.CharField(
+        max_length=50,
+        unique=True,
+        help_text="Unique role name.",
+    )
 
-    # -----------------------------
-    # 2. ROLE DESCRIPTION
-    # -----------------------------
+    # Optional description of the role.
+    description = models.TextField(
+        blank=True,
+        help_text="Optional role description.",
+    )
 
-    # description:
-    # - explains the purpose of the role
-    # - documentation only
-    # - should NEVER be used for authorization
+    # Optional hierarchy used for sorting or display.
+    # Higher values represent higher-level roles.
+    level = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Role hierarchy level.",
+    )
 
-    # -----------------------------
-    # 3. HIERARCHY LEVEL
-    # -----------------------------
+    # ------------------------------------------------------------------
+    # Status
+    # ------------------------------------------------------------------
 
-    # level:
-    # - optional ranking of roles
-    # - useful for ordering and display
-    #
-    # Example:
-    # 100 = SuperAdmin
-    #  50 = Manager
-    #  10 = Staff
-    #
-    # IMPORTANT:
-    # This is NOT a permission system.
-    # Permissions must be resolved separately.
+    # Indicates whether the role can be assigned to users.
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether the role is active.",
+    )
 
-    # -----------------------------
-    # 4. ROLE STATUS
-    # -----------------------------
+    # ------------------------------------------------------------------
+    # Audit Information
+    # ------------------------------------------------------------------
 
-    # is_active:
-    # - determines whether the role can be assigned
-    # - allows disabling a role without deleting it
+    # Automatically set when the role is created.
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Creation timestamp.",
+    )
 
-    # -----------------------------
-    # 5. SYSTEM METADATA
-    # -----------------------------
+    # Automatically updated whenever the role changes.
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Last modification timestamp.",
+    )
 
-    # created_at:
-    # - records when the role was created
+    class Meta:
+        db_table = "roles"
+        ordering = ["-level", "name"]
+        verbose_name = "Role"
+        verbose_name_plural = "Roles"
 
-    # updated_at:
-    # - records the last modification
+    # ------------------------------------------------------------------
+    # Model Lifecycle
+    # ------------------------------------------------------------------
 
-    # -----------------------------
-    # 6. RELATIONSHIPS (NOT OWNED LOGIC)
-    # -----------------------------
+    def clean(self):
+        """
+        Normalize role data before validation.
+        """
+        super().clean()
 
-    # users:
-    # - users are assigned to one role
-    # - role should not manage user behavior
+        if self.name:
+            self.name = self.name.strip().title()
 
-    # permissions:
-    # - permissions are linked externally
-    # - role only groups permissions
-    # - permission evaluation belongs to the authorization layer
+        if self.description:
+            self.description = self.description.strip()
 
-    # -----------------------------
-    # 7. DERIVED CONCEPTS
-    # -----------------------------
+    def save(self, *args, **kwargs):
+        """
+        Validate and normalize data before saving.
+        """
+        self.full_clean()
+        super().save(*args, **kwargs)
 
-    # A role itself does NOT answer:
-    #
-    # - Can create sales?
-    # - Can delete products?
-    # - Can approve stock?
-    # - Can manage users?
-    #
-    # Those answers come from permissions,
-    # never from this model.
+    # ------------------------------------------------------------------
+    # String Representation
+    # ------------------------------------------------------------------
 
-    # -----------------------------
-    # 8. DESIGN RULES (SOLID ENFORCEMENT)
-    # -----------------------------
-
-    # - This model follows SINGLE RESPONSIBILITY:
-    #   ONLY stores role information.
-
-    # - It is OPEN for extension:
-    #   New roles are added as data,
-    #   not by modifying this class.
-
-    # - It depends on abstractions:
-    #   Permission resolution happens externally.
-
-    # - It contains NO business logic:
-    #   Business services determine what actions
-    #   a user may perform.
-
-    pass
+    def __str__(self):
+        """
+        Human-readable representation of the role.
+        """
+        return self.name
