@@ -1,6 +1,5 @@
-from pathlib import Pat
-from .logging import *
-from .security import *
+from pathlib import Path
+
 
 # ==================================================
 # Base Directory
@@ -29,6 +28,7 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "apps.users",
+    "apps.roles",
     "apps.businesses",
     "apps.inventory",
     "apps.sales",
