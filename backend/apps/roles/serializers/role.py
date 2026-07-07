@@ -34,7 +34,7 @@ request handling belongs in views.
 
 from rest_framework import serializers
 
-from roles.models import Role
+from apps.roles.models import Role
 
 
 class RoleSerializer(serializers.ModelSerializer):
