@@ -53,6 +53,14 @@ htmlcov/
 .coverage
 .pytest_cache/
 
+# Tests
+tests/
+test/
+**/tests/
+**/test_*.py
+**/*_test.py
+**/tests.py
+
 # =========================
 # Node (if frontend exists)
 # =========================
