@@ -6,5 +6,22 @@ class Permission(models.Model):
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
 
+    # ------------------------------------------------------------------
+    # Audit Information
+    # ------------------------------------------------------------------
+
+    # Automatically set when the permission is created.
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Creation timestamp.",
+    )
+
+    # Automatically updated whenever the permission changes.
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Last modification timestamp.",
+    )
+
+
     def __str__(self):
         return self.name
