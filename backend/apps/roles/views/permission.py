@@ -16,6 +16,5 @@ class PermissionViewSet(viewsets.ModelViewSet):
     - PATCH  /permissions/{id}/     Partially update a permission
     - DELETE /permissions/{id}/     Delete a permission
     """
-    class Meta:
-        queryset = Permission.object.all()
-        serializer_class = PermissionSerializer
+    queryset = Permission.objects.all()
+    serializer_class = PermissionSerializer
