@@ -67,7 +67,7 @@ class PermissionViewSet(viewsets.GenericViewSet):
         serializer = PermissionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        permission = self.service.create_permission(serializer.validated_data)
+        permission = self.service.create_permission(**serializer.validated_data)
 
         return Response(
             PermissionSerializer(permission).data,

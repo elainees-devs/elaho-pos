@@ -1,4 +1,5 @@
 from .base import *
+from .security import *
 
 SECRET_KEY = "test-secret-key"
 
