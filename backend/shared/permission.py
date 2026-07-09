@@ -54,4 +54,4 @@ class IsSuperAdmin(BasePermission):
         if role is None:
             return False
 
-        return role.name == "SuperAdmin"
+        return role.name.lower() == "superadmin"
