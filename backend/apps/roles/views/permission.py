@@ -5,7 +5,7 @@ from ..serializers import PermissionSerializer
 from ..services.permission_service import PermissionService
 
 
-class PermissionViewSet(viewsets.ViewSet):
+class PermissionViewSet(viewsets.GenericViewSet):
     """
     ==================================================
     Permission View
