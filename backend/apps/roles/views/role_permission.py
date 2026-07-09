@@ -1,6 +1,8 @@
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
+from shared.permission import IsSuperAdmin
+
 from ..serializers import RolePermissionSerializer
 from ..services import RolePermissionService
 
@@ -26,6 +28,8 @@ class RolePermissionViewSet(viewsets.ViewSet):
     -----------------
     Single Responsibility Principle (SRP)
     """
+
+    permission_classes = [IsSuperAdmin]
 
     def list(self, request):
         role_permissions = RolePermissionService.list_role_permissions()

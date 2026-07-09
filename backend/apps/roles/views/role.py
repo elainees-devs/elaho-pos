@@ -22,6 +22,9 @@ Single Responsibility Principle (SRP)
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
+from shared.constants import PermissionCode
+from shared.permission import HasPermission
+
 from ..serializers import RoleSerializer
 from ..services.role_service import RoleService
 
@@ -32,6 +35,18 @@ class RoleViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = RoleSerializer
+
+    def get_permissions(self):
+        permissions = super().get_permissions()
+        if self.action in ("list", "retrieve"):
+            permissions.append(HasPermission(PermissionCode.ROLE_VIEW)())
+        elif self.action == "create":
+            permissions.append(HasPermission(PermissionCode.ROLE_CREATE)())
+        elif self.action in ("update", "partial_update"):
+            permissions.append(HasPermission(PermissionCode.ROLE_UPDATE)())
+        elif self.action == "destroy":
+            permissions.append(HasPermission(PermissionCode.ROLE_DELETE)())
+        return permissions
 
     def get_queryset(self):
         return RoleService.list_roles()
