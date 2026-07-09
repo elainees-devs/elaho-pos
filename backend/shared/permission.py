@@ -17,7 +17,7 @@ def HasPermission(permission_code):
             if role is None:
                 return False
 
-            return role.permissions.filter(code=permission_code).exists()
+            return role.permissions.filter(permission__code=permission_code).exists()
 
     return _HasPermission
 

@@ -40,6 +40,19 @@ class PermissionService:
             raise ValidationError("Permission already exists.")
 
     @staticmethod
+    def _validate_unique_code(code: str, exclude_id: int | None = None) -> None:
+        """
+        Ensure the permission code is unique.
+        """
+        queryset = Permission.objects.filter(code=code)
+
+        if exclude_id is not None:
+            queryset = queryset.exclude(pk=exclude_id)
+
+        if queryset.exists():
+            raise ValidationError("Permission code already exists.")
+
+    @staticmethod
     def create_permission(**data) -> Permission:
         data["code"] = PermissionService._validate_permission_code(data["code"])
 
