@@ -52,6 +52,7 @@ class RoleService:
         """
         user.role = role
         user.save(update_fields=["role"])
+        return user
 
     @staticmethod
     def get_role(role_id:int) -> Role:

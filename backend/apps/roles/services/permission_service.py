@@ -1,6 +1,8 @@
-from shared.constants import PermissionCode
 from django.core.exceptions import ValidationError
 from django.db.models import QuerySet
+from django.http import Http404
+
+from shared.constants import PermissionCode
 
 from ..models import Permission
 
@@ -103,7 +105,7 @@ class PermissionService:
         try:
             return Permission.objects.get(pk=permission_id)
         except Permission.DoesNotExist:
-            raise ValidationError("Permission not found.")
+            raise Http404("Permission not found.")
 
     @staticmethod
     def list_permissions() -> QuerySet[Permission]:

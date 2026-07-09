@@ -19,6 +19,8 @@ Design Principle:
 Single Responsibility Principle (SRP)
 """
 
+from django.core.exceptions import ObjectDoesNotExist
+from django.http import Http404
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
@@ -52,7 +54,10 @@ class RoleViewSet(viewsets.ModelViewSet):
         return RoleService.list_roles()
 
     def get_object(self):
-        return RoleService.get_role(self.kwargs["pk"])
+        try:
+            return RoleService.get_role(self.kwargs["pk"])
+        except ObjectDoesNotExist:
+            raise Http404
 
     def list(self, request, *args, **kwargs):
         roles = self.get_queryset()

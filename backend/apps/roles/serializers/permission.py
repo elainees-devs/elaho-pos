@@ -18,6 +18,7 @@ class PermissionSerializer(serializers.ModelSerializer):
             "name",
             "code",
             "description",
+            "is_active",
             "created_at",
             "updated_at"
         )

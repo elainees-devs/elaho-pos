@@ -32,8 +32,8 @@ Business rules belong in the service layer.
 
 from rest_framework import serializers
 
-from apps.roles.models import Role
-from apps.roles.services.role_service import RoleService
+from ..models import Role
+from ..services.role_service import RoleService
 
 
 class RoleSerializer(serializers.ModelSerializer):
