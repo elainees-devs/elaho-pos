@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from apps.roles.models import Permission
-
+from ..models import Permission
+from ..services import PermissionService
 
 class PermissionSerializer(serializers.ModelSerializer):
     """
@@ -25,4 +25,18 @@ class PermissionSerializer(serializers.ModelSerializer):
             "id",
             "created_at",
             "updated_at",
+        )
+    def create(self, validated_data):
+        """
+        Delegate permission creation to the service layer.
+        """
+        return PermissionService.create_permission(**validated_data)
+
+    def update(self, instance, validated_data):
+        """
+        Delegate permission updates to the service layer.
+        """
+        return PermissionService.update_permission(
+            role=instance,
+            **validated_data,
         )
