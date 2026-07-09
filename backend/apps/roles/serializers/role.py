@@ -12,14 +12,13 @@ Responsibilities:
 -----------------
 - Serialize Role objects into JSON responses.
 - Validate incoming Role data.
-- Create and update Role instances.
+- Delegate create and update operations to RoleService.
 - Define which model fields are exposed through the API.
 
 Does NOT:
 ----------
 - Contain business logic.
 - Perform permission checks.
-- Query unrelated models.
 - Handle HTTP requests or responses.
 
 Design Principle:
@@ -28,23 +27,20 @@ Single Responsibility Principle (SRP)
 
 This serializer is responsible only for translating
 between Role model instances and API representations.
-Business rules belong in services or models, while
-request handling belongs in views.
+Business rules belong in the service layer.
 """
 
 from rest_framework import serializers
 
 from apps.roles.models import Role
+from apps.roles.services.role_service import RoleService
 
 
 class RoleSerializer(serializers.ModelSerializer):
     """
     Serializer for the Role model.
-
-    Converts Role model instances into JSON responses and
-    validates incoming JSON data before creating or updating
-    Role records.
     """
+
     class Meta:
         model = Role
         fields = (
@@ -56,8 +52,24 @@ class RoleSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-    read_only_fields = (
+        read_only_fields = (
             "id",
             "created_at",
             "updated_at",
         )
+
+    def create(self, validated_data):
+        """
+        Delegate role creation to the service layer.
+        """
+        return RoleService.create_role(**validated_data)
+
+    def update(self, instance, validated_data):
+        """
+        Delegate role updates to the service layer.
+        """
+        return RoleService.update_role(
+            role=instance,
+            **validated_data,
+        )
+    
