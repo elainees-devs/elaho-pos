@@ -1,3 +1,4 @@
+from shared.constants import PermissionCode
 from django.core.exceptions import ValidationError
 from django.db.models import QuerySet
 
@@ -16,6 +17,16 @@ class PermissionService:
     """
 
     @staticmethod
+    def _validate_permission_code(code: str | PermissionCode) -> PermissionCode:
+        """
+        Ensure the permission code is one of the canonical codes.
+        """
+        try:
+            return PermissionCode(code)
+        except ValueError:
+            raise ValidationError("Invalid permission code.")
+
+    @staticmethod
     def _validate_unique_name(name: str, exclude_id: int | None = None) -> None:
         """
         Ensure the permission name is unique.
@@ -30,22 +41,29 @@ class PermissionService:
 
     @staticmethod
     def create_permission(**data) -> Permission:
-        """
-        Create a new permission.
-        """
+        data["code"] = PermissionService._validate_permission_code(data["code"])
+
         PermissionService._validate_unique_name(data["name"])
-        return Permission.objects.create(**data)
+        PermissionService._validate_unique_code(data["code"])
+
+        permission = Permission(**data)
+        permission.full_clean()
+        permission.save()
+
+        return permission
 
     @staticmethod
     def update_permission(permission: Permission, **data) -> Permission:
-        """
-        Update an existing permission.
-        """
-        new_name = data.get("name")
+        if "code" in data:
+            data["code"] = PermissionService._validate_permission_code(data["code"])
+            PermissionService._validate_unique_code(
+                data["code"],
+                exclude_id=permission.pk,
+            )
 
-        if new_name:
+        if "name" in data:
             PermissionService._validate_unique_name(
-                new_name,
+                data["name"],
                 exclude_id=permission.pk,
             )
 
@@ -53,7 +71,7 @@ class PermissionService:
             setattr(permission, field, value)
 
         permission.full_clean()
-        permission.save()
+        permission.save(update_fields=data.keys())
 
         return permission
 
