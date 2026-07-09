@@ -17,4 +17,4 @@ Provides the following REST API operations:
 - DELETE /users/{id}/     Delete a user
 """
     queryset = User.objects.all()
-    serialize_class = UserSerializer
+    serializer_class = UserSerializer

@@ -37,6 +37,6 @@ class PermissionSerializer(serializers.ModelSerializer):
         Delegate permission updates to the service layer.
         """
         return PermissionService.update_permission(
-            role=instance,
+            permission=instance,
             **validated_data,
         )

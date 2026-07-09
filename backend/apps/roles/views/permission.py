@@ -61,26 +61,32 @@ class PermissionViewSet(viewsets.GenericViewSet):
 
     def update(self, request, pk=None):
         """Replace an existing permission."""
-        serializer = PermissionSerializer(data=request.data)
+        permission = self.service.get_permission(pk)
+
+        serializer = PermissionSerializer(permission, data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        permission = self.service.update_permission(pk, serializer.validated_data)
+        permission = self.service.update_permission(permission, serializer.validated_data)
 
         return Response(PermissionSerializer(permission).data)
 
     def partial_update(self, request, pk=None):
         """Partially update an existing permission."""
+        permission = self.service.get_permission(pk)
+
         serializer = PermissionSerializer(
+            permission,
             data=request.data,
             partial=True,
         )
         serializer.is_valid(raise_exception=True)
 
-        permission = self.service.update_permission(pk, serializer.validated_data)
+        permission = self.service.update_permission(permission, serializer.validated_data)
 
         return Response(PermissionSerializer(permission).data)
 
     def destroy(self, request, pk=None):
         """Delete a permission."""
-        self.service.delete_permission(pk)
+        permission = self.service.get_permission(pk)
+        self.service.delete_permission(permission)
         return Response(status=status.HTTP_204_NO_CONTENT)
