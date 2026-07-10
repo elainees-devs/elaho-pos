@@ -1,6 +1,22 @@
-# shared/permissions.py
-
+from django.core.cache import cache
 from rest_framework.permissions import BasePermission
+
+
+def _resolve_perm_codes(user):
+    role = getattr(user, "role", None)
+    if role is None:
+        return frozenset()
+
+    cache_key = f"perm_codes_{role.pk}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    codes = frozenset(
+        role.permissions.values_list("permission__code", flat=True)
+    )
+    cache.set(cache_key, codes, timeout=300)
+    return codes
 
 
 def HasPermission(permission_code):
@@ -13,11 +29,10 @@ def HasPermission(permission_code):
             if not user or not user.is_authenticated:
                 return False
 
-            role = getattr(user, "role", None)
-            if role is None:
+            if getattr(user, "role", None) is None:
                 return False
 
-            return role.permissions.filter(permission__code=permission_code).exists()
+            return permission_code in _resolve_perm_codes(user)
 
     return _HasPermission
 
