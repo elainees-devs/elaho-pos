@@ -4,6 +4,7 @@ Override in dev.py or prod.py if necessary.
 """
 
 import os
+from datetime import timedelta
 
 # ------------------------------------------------------------------
 # Authentication
@@ -84,13 +85,25 @@ AUDIT_LOG_USER_IP = True
 AUDIT_LOG_USER_AGENT = True
 
 # ------------------------------------------------------------------
+# JSON Web Tokens (JWT)
+# ------------------------------------------------------------------
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "ROTATE_REFRESH_TOKENS": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+}
+
+# ------------------------------------------------------------------
 # API Security
 # ------------------------------------------------------------------
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",

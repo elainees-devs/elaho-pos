@@ -1,4 +1,5 @@
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from .permission import Permission
 from .role import Role
@@ -54,6 +55,9 @@ class RolePermission(models.Model):
         auto_now=True,
         help_text="Last modification timestamp.",
     )
+
+    # Track full change history for this model.
+    history = HistoricalRecords()
 
     class Meta:
         db_table = "role_permissions"
