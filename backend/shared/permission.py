@@ -1,21 +1,27 @@
 from django.core.cache import cache
 from rest_framework.permissions import BasePermission
 
+from .constants import PERM_CACHE_PREFIX, PERM_CACHE_TTL
 
-def _resolve_perm_codes(user):
+
+def _perm_cache_key(role_id):
+    return f"{PERM_CACHE_PREFIX}{role_id}"
+
+
+def get_permission_codes(user):
     role = getattr(user, "role", None)
     if role is None:
         return frozenset()
 
-    cache_key = f"perm_codes_{role.pk}"
-    cached = cache.get(cache_key)
+    key = _perm_cache_key(role.pk)
+    cached = cache.get(key)
     if cached is not None:
         return cached
 
     codes = frozenset(
         role.permissions.values_list("permission__code", flat=True)
     )
-    cache.set(cache_key, codes, timeout=300)
+    cache.set(key, codes, timeout=PERM_CACHE_TTL)
     return codes
 
 
@@ -32,7 +38,7 @@ def HasPermission(permission_code):
             if getattr(user, "role", None) is None:
                 return False
 
-            return permission_code in _resolve_perm_codes(user)
+            return permission_code in get_permission_codes(user)
 
     return _HasPermission
 

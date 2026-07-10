@@ -57,3 +57,7 @@ class PermissionCode(str, Enum):
     SUPPLIER_VIEW = "supplier.view"
     SUPPLIER_UPDATE = "supplier.update"
     SUPPLIER_DELETE = "supplier.delete"
+
+
+PERM_CACHE_PREFIX = "perm_codes_"
+PERM_CACHE_TTL = 300
