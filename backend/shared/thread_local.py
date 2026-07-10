@@ -1,22 +1,25 @@
 """
-Thread-local storage for request-specific data.
+Context variable storage for request-specific data.
 
 Used to make the current request and authenticated user
 available throughout the application without passing them
 through every method.
+
+Uses contextvars.ContextVar instead of threading.local so that
+it is safe for both synchronous threads and async task contexts.
 """
 
-from threading import local
+from contextvars import ContextVar
 
-_thread_locals = local()
+_request_var: ContextVar = ContextVar("request")
 
 
 def set_current_request(request):
-    _thread_locals.request = request
+    _request_var.set(request)
 
 
 def get_current_request():
-    return getattr(_thread_locals, "request", None)
+    return _request_var.get(None)
 
 
 def get_current_user():

@@ -3,9 +3,9 @@ Application middleware.
 
 Responsibilities
 ----------------
-- Store the current request in thread-local storage.
+- Store the current request in a context variable.
 - Make the authenticated user accessible application-wide.
-- Clean up thread-local storage after each request.
+- Clean up the context variable after each request.
 
 This middleware should not contain business logic.
 """
