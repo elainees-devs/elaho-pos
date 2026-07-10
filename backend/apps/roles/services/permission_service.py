@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import QuerySet
 from django.http import Http404
 
@@ -55,6 +56,7 @@ class PermissionService:
             raise ValidationError("Permission code already exists.")
 
     @staticmethod
+    @transaction.atomic
     def create_permission(**data) -> Permission:
         data["code"] = PermissionService._validate_permission_code(data["code"])
 
@@ -68,6 +70,7 @@ class PermissionService:
         return permission
 
     @staticmethod
+    @transaction.atomic
     def update_permission(permission: Permission, **data) -> Permission:
         if "code" in data:
             data["code"] = PermissionService._validate_permission_code(data["code"])

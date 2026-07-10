@@ -17,6 +17,7 @@ class RolePermissionService:
     """
 
     @staticmethod
+    @transaction.atomic
     def assign_permission(role: Role, permission: Permission) -> RolePermission:
         """
         Assign a permission to a role.
@@ -35,6 +36,7 @@ class RolePermissionService:
         )
 
     @staticmethod
+    @transaction.atomic
     def update_role_permission(
         role_permission: RolePermission,
         **data,

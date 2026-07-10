@@ -15,16 +15,19 @@ class RoleService:
     - Retrieve roles
     """
     @staticmethod
+    @transaction.atomic
     def create_role(**data) -> Role:
         """
         Create a new role.
         """
+        data["name"] = data["name"].strip()
         if Role.objects.filter(name=data["name"]).exists():
             raise ValidationError("Role already exists.")
         return Role.objects.create(**data)
     
 
     @staticmethod
+    @transaction.atomic
     def update_role(role:Role, **data) ->Role:
         """
         Update an existing role.
