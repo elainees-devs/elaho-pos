@@ -10,12 +10,6 @@ from .views import (
 router = DefaultRouter()
 
 router.register(
-    r"roles",
-    RoleViewSet,
-    basename="role"
-)
-
-router.register(
     r"permissions",
     PermissionViewSet,
     basename="permission"
@@ -25,6 +19,12 @@ router.register(
     r"role-permissions",
     RolePermissionViewSet,
     basename="role-permission"
+)
+
+router.register(
+    r"",
+    RoleViewSet,
+    basename="role"
 )
 
 

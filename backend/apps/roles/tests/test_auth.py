@@ -153,7 +153,7 @@ class JWTProtectedEndpointTest(APITestCase):
             role=self.role,
         )
 
-        self.list_url = "/api/v1/roles/roles/"
+        self.list_url = "/api/v1/roles/"
 
     def _get_access_token(self):
         return str(RefreshToken.for_user(self.user).access_token)

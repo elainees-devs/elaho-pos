@@ -25,21 +25,21 @@ class FullAuthFlowIntegrationTest(APITestCase):
         self.client.force_authenticate(admin_user)
 
         response = self.client.post(
-            "/api/v1/roles/roles/",
+            "/api/v1/roles/",
             {"name": "New Role", "level": 20},
             format="json",
         )
         self.assertEqual(response.status_code, 201)
         new_role_id = response.data["id"]
 
-        response = self.client.get("/api/v1/roles/roles/")
+        response = self.client.get("/api/v1/roles/")
         self.assertEqual(response.status_code, 200)
 
-        response = self.client.get(f"/api/v1/roles/roles/{new_role_id}/")
+        response = self.client.get(f"/api/v1/roles/{new_role_id}/")
         self.assertEqual(response.status_code, 200)
 
         response = self.client.patch(
-            f"/api/v1/roles/roles/{new_role_id}/",
+            f"/api/v1/roles/{new_role_id}/",
             {"level": 25},
             format="json",
         )
@@ -75,30 +75,30 @@ class FullAuthFlowIntegrationTest(APITestCase):
         self.client.force_authenticate(staff_user)
 
         # Staff has no permissions, should be denied
-        response = self.client.get("/api/v1/roles/roles/")
+        response = self.client.get("/api/v1/roles/")
         self.assertEqual(response.status_code, 403)
 
         # Grant view permission to staff
         RolePermissionFactory(role=self.staff_role, permission=self.view_perm)
 
         # Now staff should be able to list roles
-        response = self.client.get("/api/v1/roles/roles/")
+        response = self.client.get("/api/v1/roles/")
         self.assertEqual(response.status_code, 200)
 
         # But still can't create
         response = self.client.post(
-            "/api/v1/roles/roles/",
+            "/api/v1/roles/",
             {"name": "Unauthorized", "level": 99},
             format="json",
         )
         self.assertEqual(response.status_code, 403)
 
     def test_unauthenticated_access_denied(self):
-        response = self.client.get("/api/v1/roles/roles/")
+        response = self.client.get("/api/v1/roles/")
         self.assertEqual(response.status_code, 403)
 
         response = self.client.post(
-            "/api/v1/roles/roles/",
+            "/api/v1/roles/",
             {"name": "Hacker", "level": 999},
             format="json",
         )
@@ -127,7 +127,7 @@ class FullAuthFlowIntegrationTest(APITestCase):
 
         # Staff has USER_CREATE but not ROLE_CREATE
         response = self.client.post(
-            "/api/v1/roles/roles/",
+            "/api/v1/roles/",
             {"name": "Should Fail", "level": 1},
             format="json",
         )

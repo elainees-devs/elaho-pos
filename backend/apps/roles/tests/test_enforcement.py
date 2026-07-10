@@ -16,7 +16,7 @@ class HasPermissionEnforcementTest(APITestCase):
     def setUp(self):
         self.role = RoleFactory(name="Staff", level=10)
         self.permission = PermissionFactory(code=PermissionCode.ROLE_CREATE.value)
-        self.url = "/api/v1/roles/roles/"
+        self.url = "/api/v1/roles/"
         self.payload = {"name": "Test Role", "level": 1}
 
     def test_unauthenticated_user_gets_403(self):
@@ -55,14 +55,14 @@ class HasPermissionListViewTest(APITestCase):
     def test_list_with_permission_returns_200(self):
         user = UserFactory(role=self.role)
         self.client.force_authenticate(user)
-        response = self.client.get("/api/v1/roles/roles/")
+        response = self.client.get("/api/v1/roles/")
         self.assertEqual(response.status_code, 200)
 
     def test_list_without_permission_returns_403(self):
         role_no_perm = RoleFactory(name="NoPerm", level=1)
         user = UserFactory(role=role_no_perm)
         self.client.force_authenticate(user)
-        response = self.client.get("/api/v1/roles/roles/")
+        response = self.client.get("/api/v1/roles/")
         self.assertEqual(response.status_code, 403)
 
 

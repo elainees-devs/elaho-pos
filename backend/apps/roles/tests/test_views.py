@@ -46,7 +46,7 @@ class RoleViewSetTest(AuthenticatedAPITestCase):
     def test_create_role(self):
 
         response = self.client.post(
-            "/api/v1/roles/roles/",
+            "/api/v1/roles/",
             {
                 "name": "Manager",
                 "level": 50,
