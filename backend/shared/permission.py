@@ -61,12 +61,4 @@ class IsSuperAdmin(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-
-        if not user or not user.is_authenticated:
-            return False
-
-        role = getattr(user, "role", None)
-        if role is None:
-            return False
-
-        return role.name.lower() == "superadmin"
+        return bool(user and user.is_authenticated and user.is_superuser)

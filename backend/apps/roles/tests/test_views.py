@@ -28,6 +28,7 @@ class AuthenticatedAPITestCase(APITestCase):
             first_name="Test",
             last_name="User",
             role=self.role,
+            is_superuser=True,
         )
 
         self.client.force_authenticate(

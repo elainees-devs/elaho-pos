@@ -72,7 +72,7 @@ class IsSuperAdminEnforcementTest(APITestCase):
         self.normal_role = Role.objects.create(name="Manager", level=50)
 
     def test_superadmin_can_access_role_permission_endpoints(self):
-        user = UserFactory(role=self.superadmin_role)
+        user = UserFactory(role=self.superadmin_role, is_superuser=True)
         self.client.force_authenticate(user)
 
         role = RoleFactory()
@@ -98,26 +98,12 @@ class IsSuperAdminEnforcementTest(APITestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_superadmin_case_insensitive_admin(self):
-        from django.test import RequestFactory
-        from shared.permission import IsSuperAdmin
-
         rf = RequestFactory()
-        for name in ("superadmin", "SUPERADMIN", "SuperAdmin", "Superadmin"):
-            role = Role(name=name, level=999)
-            user = get_user_model()(
-                email=f"{name.lower()}@example.com",
-                first_name="Test",
-                last_name="User",
-                password="password123",
-                role=role,
-            )
-            request = rf.get("/api/v1/roles/role-permissions/")
-            request.user = user
-            perm = IsSuperAdmin()
-            self.assertTrue(
-                perm.has_permission(request, None),
-                f"Failed for role name: {name}",
-            )
+        perm = IsSuperAdmin()
+        request = rf.get("/api/v1/roles/role-permissions/")
+        user = UserFactory(is_superuser=True)
+        request.user = user
+        self.assertTrue(perm.has_permission(request, None))
 
     def test_unauthenticated_user_gets_403(self):
         role = RoleFactory()

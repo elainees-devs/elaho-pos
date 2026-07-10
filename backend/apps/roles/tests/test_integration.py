@@ -48,7 +48,7 @@ class FullAuthFlowIntegrationTest(APITestCase):
 
     def test_role_level_enforcement(self):
         manager_user = UserFactory(role=self.manager_role)
-        admin_user = UserFactory(role=self.admin_role)
+        admin_user = UserFactory(role=self.admin_role, is_superuser=True)
 
         # Admin (level 999) should pass
         self.client.force_authenticate(admin_user)
@@ -113,7 +113,7 @@ class FullAuthFlowIntegrationTest(APITestCase):
         self.assertEqual(response.status_code, 403)
 
         # Superadmin can access role-permission endpoints
-        admin_user = UserFactory(role=self.admin_role)
+        admin_user = UserFactory(role=self.admin_role, is_superuser=True)
         self.client.force_authenticate(admin_user)
         response = self.client.get("/api/v1/roles/role-permissions/")
         self.assertEqual(response.status_code, 200)
