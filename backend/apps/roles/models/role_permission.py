@@ -29,6 +29,7 @@ class RolePermission(models.Model):
         Role,
         on_delete=models.CASCADE,
         related_name="permissions",
+        db_index=True,
         help_text="Role assigned to the permission.",
     )
 
@@ -37,6 +38,7 @@ class RolePermission(models.Model):
         Permission,
         on_delete=models.CASCADE,
         related_name="roles",
+        db_index=True,
         help_text="Permission granted to the role.",
     )
 

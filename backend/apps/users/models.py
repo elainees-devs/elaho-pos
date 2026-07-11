@@ -30,7 +30,6 @@ class User(AbstractUser):
     # Email is used as the unique login identifier.
     email = models.EmailField(
         unique=True,
-        db_index=True,
         help_text="Unique email address used for authentication.",
     )
 
@@ -72,11 +71,13 @@ class User(AbstractUser):
         related_name="users",
         null=True,
         blank=True,
+        db_index=True,
         help_text="Assigned role.",
     )
 
     is_active = models.BooleanField(
         default=True,
+        db_index=True,
         help_text="Indicates whether the user account is active.",
     )
 
@@ -93,6 +94,7 @@ class User(AbstractUser):
     # Soft-delete flag.
     is_deleted = models.BooleanField(
         default=False,
+        db_index=True,
         help_text="Indicates whether the user has been archived.",
     )
 

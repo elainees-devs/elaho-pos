@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from .models import User
 
 
-class UserManager(DjangoUserManager[User]):
+class UserManager(DjangoUserManager):
     use_in_migrations = True
 
     def create_user(
