@@ -1,7 +1,14 @@
-from django.contrib.auth.base_user import BaseUserManager
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from django.contrib.auth.models import UserManager as DjangoUserManager
+
+if TYPE_CHECKING:
+    from .models import User
 
 
-class UserManager(BaseUserManager):
+class UserManager(DjangoUserManager[User]):
     use_in_migrations = True
 
     def create_user(self, email, password=None, **extra_fields):
