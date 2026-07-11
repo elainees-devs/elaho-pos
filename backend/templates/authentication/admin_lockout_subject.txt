@@ -1,0 +1,1 @@
+Security Alert: Repeated lockout for {{ user.email }} - Elaho POS

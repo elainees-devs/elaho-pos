@@ -57,7 +57,14 @@ class User(AbstractUser):
     # Flag indicating the next login attempt after lockout expiry is final.
     post_lockout_pending = models.BooleanField(
         default=False,
-        help_text="If true, the next failed login after lockout expires will permanently deactivate the account.",
+        help_text="If true, the next login attempt after lockout expires is the final attempt before re-lock.",
+    )
+
+    # Tracks how many consecutive lockout cycles the account has gone through.
+    lockout_cycles = models.PositiveSmallIntegerField(
+        default=0,
+        db_index=True,
+        help_text="Number of consecutive lockout cycles. Account requires admin unlock when >= LOGIN_MAX_LOCKOUT_CYCLES.",
     )
 
     # ------------------------------------------------------------------

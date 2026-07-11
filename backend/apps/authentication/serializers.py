@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
@@ -7,7 +7,11 @@ from django.utils.http import urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .services import LoginLockoutService, PERMANENT_LOCKOUT_MSG
+from .services import (
+    ADMIN_LOCKOUT_MSG,
+    LoginLockoutService,
+    POST_LOCKOUT_FAIL_MSG,
+)
 
 User = get_user_model()
 
@@ -43,10 +47,10 @@ class LoginSerializer(serializers.Serializer):
                 {"detail": LOGIN_ERROR_MSG}
             )
 
-        # Permanently locked by the lockout system — reject all attempts.
-        if LoginLockoutService.is_permanently_locked(user):
+        # Account requires administrator unlock.
+        if LoginLockoutService.requires_admin_unlock(user):
             raise serializers.ValidationError(
-                {"detail": PERMANENT_LOCKOUT_MSG}
+                {"detail": ADMIN_LOCKOUT_MSG}
             )
 
         # Temporarily locked (still within lockout window).
@@ -62,12 +66,17 @@ class LoginSerializer(serializers.Serializer):
                 }
             )
 
-        # Post-lockout expired — this is the final attempt.
+        # Post-lockout expired — this is the final attempt before re-lock.
         if LoginLockoutService.is_lockout_expired(user):
             if not user.check_password(password):
                 LoginLockoutService.record_failed_attempt(user)
+                # Check if account now requires admin unlock.
+                if LoginLockoutService.requires_admin_unlock(user):
+                    raise serializers.ValidationError(
+                        {"detail": ADMIN_LOCKOUT_MSG}
+                    )
                 raise serializers.ValidationError(
-                    {"detail": PERMANENT_LOCKOUT_MSG}
+                    {"detail": POST_LOCKOUT_FAIL_MSG}
                 )
             # Correct password on post-lockout attempt → reset everything.
             LoginLockoutService.reset_failed_attempts(user)

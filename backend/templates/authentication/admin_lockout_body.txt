@@ -1,0 +1,15 @@
+SECURITY ALERT: Repeated Lockout
+
+The following account has been locked {{ lockout_cycles }} time(s) due to repeated failed login attempts:
+
+  Account:        {{ user.email }}
+  Lockout Cycles: {{ lockout_cycles }} / {{ max_cycles }}
+  Timestamp:      {{ timestamp|date:"Y-m-d H:i:s UTC" }}
+
+{% if lockout_cycles >= max_cycles %}
+This account now requires administrator intervention to unlock.
+{% else %}
+If this pattern continues, the account will require administrator intervention to unlock.
+{% endif %}
+
+— Elaho POS

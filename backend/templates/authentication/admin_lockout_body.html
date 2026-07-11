@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; max-width: 480px; margin: 40px auto;">
+  <h2 style="color: #dc2626;">Security Alert: Repeated Lockout</h2>
+  <p>The following account has been locked <strong>{{ lockout_cycles }}</strong> time(s) due to repeated failed login attempts:</p>
+  <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+    <tr>
+      <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Account</td>
+      <td style="padding: 8px; border: 1px solid #ddd;">{{ user.email }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Lockout Cycles</td>
+      <td style="padding: 8px; border: 1px solid #ddd;">{{ lockout_cycles }} / {{ max_cycles }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">Timestamp</td>
+      <td style="padding: 8px; border: 1px solid #ddd;">{{ timestamp|date:"Y-m-d H:i:s UTC" }}</td>
+    </tr>
+  </table>
+  {% if lockout_cycles >= max_cycles %}
+  <p style="color: #dc2626; font-weight: bold;">This account now requires administrator intervention to unlock.</p>
+  {% else %}
+  <p style="color: #d97706;">If this pattern continues, the account will require administrator intervention to unlock.</p>
+  {% endif %}
+  <p style="color: #666; font-size: 14px;">This is an automated security notification from Elaho POS.</p>
+</body>
+</html>

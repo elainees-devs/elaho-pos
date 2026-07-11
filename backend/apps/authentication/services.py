@@ -3,8 +3,10 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import F
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 User = get_user_model()
@@ -13,24 +15,34 @@ logger = logging.getLogger(__name__)
 
 MAX_ATTEMPTS = getattr(settings, "LOGIN_MAX_FAILED_ATTEMPTS", 5)
 LOCKOUT_MINUTES = getattr(settings, "LOGIN_LOCKOUT_DURATION_MINUTES", 10)
+MAX_LOCKOUT_CYCLES = getattr(settings, "LOGIN_MAX_LOCKOUT_CYCLES", 3)
+ADMIN_EMAIL = getattr(settings, "LOGIN_ADMIN_EMAIL", "")
 
-PERMANENT_LOCKOUT_MSG = (
+ADMIN_LOCKOUT_MSG = (
     "Your account has been locked due to repeated failed login attempts. "
-    "Kindly contact your system administrator to reactivate your account."
+    "Kindly contact your system administrator to unlock your account."
+)
+
+POST_LOCKOUT_FAIL_MSG = (
+    "Incorrect password. Your account has been locked again for security. "
+    "If this continues, administrator intervention may be required."
 )
 
 
 class LoginLockoutService:
     """
-    Manages login lockout state for user accounts.
+    Manages login lockout state for user accounts with escalating lockout cycles.
 
     Lifecycle:
     1. Failed attempts increment counter.
-    2. At threshold → temporary lockout (10 min) + post_lockout_pending=True.
+    2. At threshold (5) → temporary lockout (10 min) + post_lockout_pending=True.
+       lockout_cycles increments on each lockout trigger.
     3. Lockout expires → one final attempt allowed.
-       - Success → reset everything, normal active status.
-       - Failure → permanent deactivation (is_active=False).
-    4. Permanently locked accounts reject all login attempts.
+       - Success → reset everything (including lockout_cycles), normal active status.
+       - Failure → re-lock for another 10 min, lockout_cycles increments again,
+         admin notified. If lockout_cycles >= MAX_LOCKOUT_CYCLES, account requires
+         admin unlock (all logins blocked).
+    4. Admin-unlocked accounts are fully restored.
 
     Thread-safe via F() expressions and select_for_update() to prevent
     race conditions on concurrent failed login attempts.
@@ -50,14 +62,12 @@ class LoginLockoutService:
             return None
 
     @staticmethod
-    def is_permanently_locked(user: User) -> bool:
+    def requires_admin_unlock(user: User) -> bool:
         """
-        Check if the account was permanently deactivated by the lockout system.
-
-        Only accounts deactivated via the lockout flow are considered
-        permanently locked. Admin-deactivated accounts are excluded.
+        Check if the account has exceeded the lockout cycle threshold
+        and requires administrator intervention to unlock.
         """
-        return not user.is_active and user.post_lockout_pending
+        return user.lockout_cycles >= MAX_LOCKOUT_CYCLES
 
     @staticmethod
     def is_locked_out(user: User) -> bool:
@@ -107,23 +117,27 @@ class LoginLockoutService:
 
         If the threshold is reached, lock the account and set
         post_lockout_pending so the next attempt after expiry is final.
-        If the post-lockout attempt fails, permanently deactivate.
+        If the post-lockout attempt fails, re-lock the account,
+        increment lockout_cycles, and notify the admin.
         """
         user = User.objects.select_for_update().get(pk=user.pk)
 
-        # Post-lockout failed attempt → permanent deactivation.
+        # Post-lockout failed attempt → re-lock with escalating cycles.
         if user.post_lockout_pending:
-            User.objects.filter(pk=user.pk).update(
-                is_active=False,
-                failed_login_attempts=0,
-                locked_until=None,
-            )
+            updates = {
+                "locked_until": LoginLockoutService.get_lockout_until(),
+                "lockout_cycles": F("lockout_cycles") + 1,
+            }
+            User.objects.filter(pk=user.pk).update(**updates)
             user.refresh_from_db()
             logger.warning(
-                "Account permanently deactivated for %s: "
+                "Account re-locked for %s (cycle %d/%d): "
                 "failed post-lockout login attempt.",
                 user.email,
+                user.lockout_cycles,
+                MAX_LOCKOUT_CYCLES,
             )
+            LoginLockoutService._notify_admin(user)
             return user
 
         # Normal failed attempt → increment counter.
@@ -135,12 +149,15 @@ class LoginLockoutService:
         if new_count >= MAX_ATTEMPTS:
             updates["locked_until"] = LoginLockoutService.get_lockout_until()
             updates["post_lockout_pending"] = True
+            updates["lockout_cycles"] = F("lockout_cycles") + 1
             logger.warning(
                 "Account locked for %s after %d failed attempts. "
-                "Post-lockout pending.",
+                "Lockout cycle %d.",
                 user.email,
                 new_count,
+                user.lockout_cycles + 1,
             )
+            LoginLockoutService._notify_admin(user)
         else:
             logger.info(
                 "Failed login attempt %d/%d for %s.",
@@ -157,13 +174,54 @@ class LoginLockoutService:
     @transaction.atomic
     def reset_failed_attempts(user: User) -> User:
         """
-        Clear the failed login counter, lockout, and post-lockout flag
-        on successful login.
+        Clear the failed login counter, lockout, post-lockout flag,
+        and lockout cycles on successful login.
         """
         User.objects.filter(pk=user.pk).update(
             failed_login_attempts=0,
             locked_until=None,
             post_lockout_pending=False,
+            lockout_cycles=0,
         )
         user.refresh_from_db()
         return user
+
+    @staticmethod
+    def _notify_admin(user: User) -> None:
+        """
+        Send an email notification to the administrator when an account
+        is locked or re-locked. Silently skipped if LOGIN_ADMIN_EMAIL is empty.
+        """
+        if not ADMIN_EMAIL:
+            return
+
+        try:
+            context = {
+                "user": user,
+                "lockout_cycles": user.lockout_cycles,
+                "max_cycles": MAX_LOCKOUT_CYCLES,
+                "timestamp": timezone.now(),
+            }
+
+            subject = render_to_string(
+                "authentication/admin_lockout_subject.txt", context
+            ).strip()
+            html_body = render_to_string(
+                "authentication/admin_lockout_body.html", context
+            )
+            text_body = render_to_string(
+                "authentication/admin_lockout_body.txt", context
+            )
+
+            send_mail(
+                subject=subject,
+                message=text_body,
+                html_message=html_body,
+                from_email=None,
+                recipient_list=[ADMIN_EMAIL],
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send admin lockout notification for %s.",
+                user.email,
+            )

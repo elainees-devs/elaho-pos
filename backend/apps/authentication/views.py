@@ -20,10 +20,11 @@ class LoginView(APIView):
     """
     POST /api/v1/auth/login/
 
-    Custom login endpoint with account lockout protection.
+    Custom login endpoint with escalating lockout protection.
 
     Enforces:
     - Account lockout after configurable failed attempts
+    - Escalating lockout cycles with admin notification
     - Generic error messages to prevent enumeration
     - Rate limiting via throttle
     """
@@ -40,7 +41,7 @@ class LoginView(APIView):
             if isinstance(detail, list):
                 detail = detail[0]
             if isinstance(detail, str):
-                if "permanently locked" in detail.lower() or "reactivate" in detail.lower():
+                if "contact" in detail.lower() and "administrator" in detail.lower():
                     return Response(
                         {"detail": detail},
                         status=status.HTTP_403_FORBIDDEN,
