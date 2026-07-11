@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django.contrib.auth.models import UserManager as DjangoUserManager
 
@@ -11,7 +11,15 @@ if TYPE_CHECKING:
 class UserManager(DjangoUserManager[User]):
     use_in_migrations = True
 
-    def create_user(self, email, password=None, **extra_fields):
+    def create_user(
+        self,
+        username: str | None = None,
+        email: str | None = None,
+        password: str | None = None,
+        **extra_fields: Any,
+    ) -> User:
+        _ = username
+
         if not email:
             raise ValueError("Email is required.")
 
@@ -30,7 +38,15 @@ class UserManager(DjangoUserManager[User]):
 
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields):
+    def create_superuser(
+        self,
+        username: str | None = None,
+        email: str | None = None,
+        password: str | None = None,
+        **extra_fields: Any,
+    ) -> User:
+        _ = username
+
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
@@ -41,4 +57,9 @@ class UserManager(DjangoUserManager[User]):
         if not extra_fields.get("is_superuser"):
             raise ValueError("Superuser must have is_superuser=True.")
 
-        return self.create_user(email, password, **extra_fields)
+        return self.create_user(
+            username=username,
+            email=email,
+            password=password,
+            **extra_fields,
+        )
