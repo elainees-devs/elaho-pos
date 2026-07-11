@@ -7,6 +7,11 @@ from rest_framework.test import APITestCase
 
 from apps.authentication.services import LoginLockoutService
 
+PERMANENT_LOCKOUT_MSG = (
+    "Your account has been locked due to repeated failed login attempts. "
+    "Kindly contact your system administrator to reactivate your account."
+)
+
 User = get_user_model()
 
 LOGIN_URL = "/api/v1/auth/login/"
@@ -24,6 +29,15 @@ class LoginLockoutServiceTest(APITestCase):
             last_name="User",
         )
 
+    def test_is_permanently_locked_false_when_active(self):
+        self.assertFalse(LoginLockoutService.is_permanently_locked(self.user))
+
+    def test_is_permanently_locked_true_when_inactive(self):
+        self.user.is_active = False
+        self.user.post_lockout_pending = True
+        self.user.save(update_fields=["is_active", "post_lockout_pending"])
+        self.assertTrue(LoginLockoutService.is_permanently_locked(self.user))
+
     def test_is_locked_out_false_when_no_lockout(self):
         self.assertFalse(LoginLockoutService.is_locked_out(self.user))
 
@@ -36,6 +50,18 @@ class LoginLockoutServiceTest(APITestCase):
         self.user.locked_until = timezone.now() - timedelta(minutes=1)
         self.user.save(update_fields=["locked_until"])
         self.assertFalse(LoginLockoutService.is_locked_out(self.user))
+
+    def test_is_lockout_expired_true_when_pending(self):
+        self.user.locked_until = timezone.now() - timedelta(minutes=1)
+        self.user.post_lockout_pending = True
+        self.user.save(update_fields=["locked_until", "post_lockout_pending"])
+        self.assertTrue(LoginLockoutService.is_lockout_expired(self.user))
+
+    def test_is_lockout_expired_false_when_not_pending(self):
+        self.user.locked_until = timezone.now() - timedelta(minutes=1)
+        self.user.post_lockout_pending = False
+        self.user.save(update_fields=["locked_until", "post_lockout_pending"])
+        self.assertFalse(LoginLockoutService.is_lockout_expired(self.user))
 
     def test_get_lockout_remaining_seconds_when_locked(self):
         self.user.locked_until = timezone.now() + timedelta(minutes=5)
@@ -66,18 +92,40 @@ class LoginLockoutServiceTest(APITestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.failed_login_attempts, 5)
         self.assertIsNotNone(self.user.locked_until)
+        self.assertTrue(self.user.post_lockout_pending)
         self.assertTrue(LoginLockoutService.is_locked_out(self.user))
+
+    def test_record_failed_attempt_post_lockout_deactivates(self):
+        self.user.locked_until = timezone.now() - timedelta(minutes=1)
+        self.user.post_lockout_pending = True
+        self.user.save(update_fields=["locked_until", "post_lockout_pending"])
+
+        LoginLockoutService.record_failed_attempt(self.user)
+
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.is_active)
+        self.assertEqual(self.user.failed_login_attempts, 0)
+        self.assertIsNone(self.user.locked_until)
+        self.assertTrue(self.user.post_lockout_pending)
 
     def test_reset_failed_attempts_clears_everything(self):
         self.user.failed_login_attempts = 3
         self.user.locked_until = timezone.now() + timedelta(minutes=5)
-        self.user.save(update_fields=["failed_login_attempts", "locked_until"])
+        self.user.post_lockout_pending = True
+        self.user.save(
+            update_fields=[
+                "failed_login_attempts",
+                "locked_until",
+                "post_lockout_pending",
+            ]
+        )
 
         LoginLockoutService.reset_failed_attempts(self.user)
 
         self.user.refresh_from_db()
         self.assertEqual(self.user.failed_login_attempts, 0)
         self.assertIsNone(self.user.locked_until)
+        self.assertFalse(self.user.post_lockout_pending)
 
 
 class LoginViewTest(APITestCase):
@@ -91,6 +139,21 @@ class LoginViewTest(APITestCase):
             first_name="Test",
             last_name="User",
         )
+
+    def _lock_user(self):
+        """Helper: trigger 5 failed attempts to lock the account."""
+        for _ in range(5):
+            self.client.post(
+                LOGIN_URL,
+                {"email": "user@example.com", "password": "wrong"},
+                format="json",
+            )
+
+    def _expire_lockout(self):
+        """Helper: move time past the lockout window."""
+        self.user.refresh_from_db()
+        self.user.locked_until = timezone.now() - timedelta(minutes=1)
+        self.user.save(update_fields=["locked_until"])
 
     def test_successful_login_returns_tokens(self):
         response = self.client.post(
@@ -136,23 +199,14 @@ class LoginViewTest(APITestCase):
         self.assertEqual(self.user.failed_login_attempts, 1)
 
     def test_lockout_after_5_failed_attempts(self):
-        for i in range(5):
-            response = self.client.post(
-                LOGIN_URL,
-                {"email": "user@example.com", "password": "wrong"},
-                format="json",
-            )
+        self._lock_user()
 
         self.user.refresh_from_db()
         self.assertTrue(LoginLockoutService.is_locked_out(self.user))
+        self.assertTrue(self.user.post_lockout_pending)
 
     def test_lockout_blocks_even_correct_password(self):
-        for _ in range(5):
-            self.client.post(
-                LOGIN_URL,
-                {"email": "user@example.com", "password": "wrong"},
-                format="json",
-            )
+        self._lock_user()
 
         response = self.client.post(
             LOGIN_URL,
@@ -163,12 +217,7 @@ class LoginViewTest(APITestCase):
         self.assertIn("locked", response.data["detail"].lower())
 
     def test_lockout_response_includes_retry_after(self):
-        for _ in range(5):
-            self.client.post(
-                LOGIN_URL,
-                {"email": "user@example.com", "password": "wrong"},
-                format="json",
-            )
+        self._lock_user()
 
         response = self.client.post(
             LOGIN_URL,
@@ -178,17 +227,9 @@ class LoginViewTest(APITestCase):
         self.assertEqual(response.status_code, 401)
         self.assertIn("Try again in", response.data["detail"])
 
-    def test_login_after_lockout_expires_succeeds(self):
-        for _ in range(5):
-            self.client.post(
-                LOGIN_URL,
-                {"email": "user@example.com", "password": "wrong"},
-                format="json",
-            )
-
-        self.user.refresh_from_db()
-        self.user.locked_until = timezone.now() - timedelta(minutes=1)
-        self.user.save(update_fields=["locked_until"])
+    def test_successful_login_after_lockout_expires(self):
+        self._lock_user()
+        self._expire_lockout()
 
         response = self.client.post(
             LOGIN_URL,
@@ -198,27 +239,69 @@ class LoginViewTest(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("access", response.data)
 
-    def test_login_after_lockout_expires_resets_counter(self):
-        for _ in range(5):
-            self.client.post(
-                LOGIN_URL,
-                {"email": "user@example.com", "password": "wrong"},
-                format="json",
-            )
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.failed_login_attempts, 0)
+        self.assertIsNone(self.user.locked_until)
+        self.assertFalse(self.user.post_lockout_pending)
+
+    def test_failed_login_after_lockout_expires_permanently_deactivates(self):
+        self._lock_user()
+        self._expire_lockout()
+
+        response = self.client.post(
+            LOGIN_URL,
+            {"email": "user@example.com", "password": "wrong"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("reactivate", response.data["detail"].lower())
 
         self.user.refresh_from_db()
-        self.user.locked_until = timezone.now() - timedelta(minutes=1)
-        self.user.save(update_fields=["locked_until"])
+        self.assertFalse(self.user.is_active)
+        self.assertEqual(self.user.failed_login_attempts, 0)
+        self.assertIsNone(self.user.locked_until)
 
+    def test_permanently_locked_account_rejects_correct_password(self):
+        self._lock_user()
+        self._expire_lockout()
+
+        # Fail post-lockout → permanent lock.
         self.client.post(
             LOGIN_URL,
-            {"email": "user@example.com", "password": self.password},
+            {"email": "user@example.com", "password": "wrong"},
             format="json",
         )
 
         self.user.refresh_from_db()
-        self.assertEqual(self.user.failed_login_attempts, 0)
-        self.assertIsNone(self.user.locked_until)
+        self.assertFalse(self.user.is_active)
+
+        # Try again with correct password → still rejected.
+        response = self.client.post(
+            LOGIN_URL,
+            {"email": "user@example.com", "password": self.password},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("reactivate", response.data["detail"].lower())
+        self.assertIn("reactivate", response.data["detail"].lower())
+
+    def test_permanently_locked_message_is_user_friendly(self):
+        self._lock_user()
+        self._expire_lockout()
+
+        self.client.post(
+            LOGIN_URL,
+            {"email": "user@example.com", "password": "wrong"},
+            format="json",
+        )
+
+        response = self.client.post(
+            LOGIN_URL,
+            {"email": "user@example.com", "password": self.password},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data["detail"], PERMANENT_LOCKOUT_MSG)
 
     def test_nonexistent_email_returns_same_error(self):
         response = self.client.post(

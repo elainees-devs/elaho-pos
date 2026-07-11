@@ -35,19 +35,25 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
 
         if not serializer.is_valid():
-            # Auth failures are always 401; validation errors are 400.
+            # Auth failures are always 401/403; validation errors are 400.
             detail = serializer.errors.get("detail")
             if isinstance(detail, list):
                 detail = detail[0]
-            if isinstance(detail, str) and (
-                "Invalid email or password" in detail
-                or "locked" in detail.lower()
-                or "Try again in" in detail
-            ):
-                return Response(
-                    {"detail": detail},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
+            if isinstance(detail, str):
+                if "permanently locked" in detail.lower() or "reactivate" in detail.lower():
+                    return Response(
+                        {"detail": detail},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+                if (
+                    "Invalid email or password" in detail
+                    or "locked" in detail.lower()
+                    or "Try again in" in detail
+                ):
+                    return Response(
+                        {"detail": detail},
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         user = serializer.validated_data["user"]

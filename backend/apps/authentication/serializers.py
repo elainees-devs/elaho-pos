@@ -7,7 +7,7 @@ from django.utils.http import urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .services import LoginLockoutService
+from .services import LoginLockoutService, PERMANENT_LOCKOUT_MSG
 
 User = get_user_model()
 
@@ -20,7 +20,7 @@ class LoginSerializer(serializers.Serializer):
     """
     Authenticates a user with email + password, enforcing lockout policy.
 
-    Raises AuthenticationFailed (401) on any auth failure.
+    Raises ValidationError on any auth failure with appropriate message.
     Returns validated user on success.
     """
 
@@ -43,20 +43,38 @@ class LoginSerializer(serializers.Serializer):
                 {"detail": LOGIN_ERROR_MSG}
             )
 
-        # Check lockout before verifying password.
+        # Permanently locked by the lockout system — reject all attempts.
+        if LoginLockoutService.is_permanently_locked(user):
+            raise serializers.ValidationError(
+                {"detail": PERMANENT_LOCKOUT_MSG}
+            )
+
+        # Temporarily locked (still within lockout window).
         if LoginLockoutService.is_locked_out(user):
             remaining = LoginLockoutService.get_lockout_remaining_seconds(user)
             minutes, seconds = divmod(remaining, 60)
             raise serializers.ValidationError(
                 {
                     "detail": (
-                        "Account is locked due to too many failed login attempts. "
-                        f"Try again in {minutes}m {seconds}s."
+                        "Account is temporarily locked due to too many "
+                        f"failed login attempts. Try again in {minutes}m {seconds}s."
                     )
                 }
             )
 
-        # Check if account is disabled.
+        # Post-lockout expired — this is the final attempt.
+        if LoginLockoutService.is_lockout_expired(user):
+            if not user.check_password(password):
+                LoginLockoutService.record_failed_attempt(user)
+                raise serializers.ValidationError(
+                    {"detail": PERMANENT_LOCKOUT_MSG}
+                )
+            # Correct password on post-lockout attempt → reset everything.
+            LoginLockoutService.reset_failed_attempts(user)
+            attrs["user"] = user
+            return attrs
+
+        # Inactive user (admin-deactivated, not lockout-deactivated).
         if not user.is_active:
             raise serializers.ValidationError(
                 {"detail": LOGIN_ERROR_MSG}
@@ -73,8 +91,8 @@ class LoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     {
                         "detail": (
-                            "Account is locked due to too many failed login attempts. "
-                            f"Try again in {minutes}m {seconds}s."
+                            "Account is temporarily locked due to too many "
+                            f"failed login attempts. Try again in {minutes}m {seconds}s."
                         )
                     }
                 )

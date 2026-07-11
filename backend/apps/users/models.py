@@ -54,6 +54,12 @@ class User(AbstractUser):
         help_text="Account is locked until this timestamp.",
     )
 
+    # Flag indicating the next login attempt after lockout expiry is final.
+    post_lockout_pending = models.BooleanField(
+        default=False,
+        help_text="If true, the next failed login after lockout expires will permanently deactivate the account.",
+    )
+
     # ------------------------------------------------------------------
     # Personal Information
     # ------------------------------------------------------------------
