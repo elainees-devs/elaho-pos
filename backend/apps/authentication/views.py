@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .serializers import (
+    LoginSerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
@@ -13,6 +14,46 @@ from .throttles import (
     PasswordResetConfirmThrottle,
     PasswordResetRequestThrottle,
 )
+
+
+class LoginView(APIView):
+    """
+    POST /api/v1/auth/login/
+
+    Custom login endpoint with account lockout protection.
+
+    Enforces:
+    - Account lockout after configurable failed attempts
+    - Generic error messages to prevent enumeration
+    - Rate limiting via throttle
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [PasswordResetRequestThrottle]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            # Auth failures are always 401; validation errors are 400.
+            detail = serializer.errors.get("detail")
+            if isinstance(detail, list):
+                detail = detail[0]
+            if isinstance(detail, str) and (
+                "Invalid email or password" in detail
+                or "locked" in detail.lower()
+                or "Try again in" in detail
+            ):
+                return Response(
+                    {"detail": detail},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.validated_data["user"]
+        tokens = serializer.get_tokens(user)
+
+        return Response(tokens, status=status.HTTP_200_OK)
 
 
 class PasswordResetRequestView(APIView):

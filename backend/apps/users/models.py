@@ -37,6 +37,24 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     # ------------------------------------------------------------------
+    # Login Security
+    # ------------------------------------------------------------------
+
+    # Tracks consecutive failed login attempts.
+    failed_login_attempts = models.PositiveSmallIntegerField(
+        default=0,
+        help_text="Number of consecutive failed login attempts.",
+    )
+
+    # Timestamp when the lockout expires. Null = not locked.
+    locked_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Account is locked until this timestamp.",
+    )
+
+    # ------------------------------------------------------------------
     # Personal Information
     # ------------------------------------------------------------------
 

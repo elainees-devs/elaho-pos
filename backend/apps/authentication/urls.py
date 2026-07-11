@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    LoginView,
     PasswordChangeView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
@@ -9,6 +10,11 @@ from .views import (
 app_name = "authentication"
 
 urlpatterns = [
+    path(
+        "login/",
+        LoginView.as_view(),
+        name="login",
+    ),
     path(
         "password-reset/",
         PasswordResetRequestView.as_view(),
