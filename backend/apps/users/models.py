@@ -89,6 +89,12 @@ class User(AbstractUser):
         blank=True,
         help_text="Optional phone number.",
     )
+    email_verified = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Indicates whether the user email has been verified.",
+    )
+
 
     # ------------------------------------------------------------------
     # Relationships
