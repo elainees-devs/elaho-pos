@@ -145,8 +145,9 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         token = token_generator.make_token(user)
         uid = urlsafe_base64_encode(str(user.pk).encode())
 
-        protocol = self.context.get("protocol", "https")
-        domain = self.context.get("domain", "elahopos.com")
+        request = self.context.get("request")
+        protocol = request.scheme if request else "https"
+        domain = request.get_host() if request else "localhost"
 
         context = {
             "user": user,
@@ -252,7 +253,7 @@ class SendVerificationSerializer(serializers.Serializer):
         if user.email_verified:
             return
 
-        request = self.context.get("request")
+        request = self.context["request"]
 
         ip_address = None
         user_agent = ""
@@ -267,12 +268,8 @@ class SendVerificationSerializer(serializers.Serializer):
             user_agent=user_agent,
         )
 
-        request = self.context.get("request")
-        protocol = "https"
-        domain = "localhost"
-        if request:
-            protocol = request.scheme
-            domain = request.get_host()
+        protocol = request.scheme if request else "https"
+        domain = request.get_host() if request else "localhost"
 
         context = {
             "user": user,
@@ -364,15 +361,9 @@ class VerifyEmailSerializer(serializers.Serializer):
         self._send_welcome_email(user)
 
     def _send_welcome_email(self, user):
-        from django.core.mail import send_mail
-        from django.template.loader import render_to_string
-
         request = self.context.get("request")
-        protocol = "https"
-        domain = "localhost"
-        if request:
-            protocol = request.scheme
-            domain = request.get_host()
+        protocol = request.scheme if request else "https"
+        domain = request.get_host() if request else "localhost"
         context = {"user": user, "protocol": protocol, "domain": domain}
 
         try:
