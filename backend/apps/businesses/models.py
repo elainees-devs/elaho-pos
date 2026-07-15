@@ -73,11 +73,10 @@ class Business(models.Model):
         blank=True,
         help_text="Physical address of the business.",
     )
-
-    kra_pin = models.CharField(
-        max_length=50,
-        blank=True,
-        help_text="KRA PIN for eTIMS tax compliance.",
+    kra_pin=models.CharField(
+        max_length=20,
+        blank=False,
+        help_text="Business KRA Pin"
     )
 
     # ------------------------------------------------------------------
