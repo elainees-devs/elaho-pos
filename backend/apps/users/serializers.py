@@ -13,6 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "phone",
             "role",
+            "business",
             "password",
             "is_active",
             "is_deleted",
@@ -21,6 +22,7 @@ class UserSerializer(serializers.ModelSerializer):
         )
         read_only_fields = (
             "id",
+            "business",
             "email_verified",
             "created_at",
             "updated_at",
@@ -31,9 +33,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password")
+        business = self.context["request"].user.business
         user = User.objects.create_user(
             email=validated_data.pop("email"),
             password=password,
+            business=business,
             **validated_data,
         )
         return user

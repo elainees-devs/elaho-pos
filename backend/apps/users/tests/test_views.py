@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 
 from rest_framework.test import APITestCase
 
+from apps.businesses.models import Business
 from apps.roles.models import Role, Permission, RolePermission
 from shared.constants import PermissionCode
 from apps.roles.tests.factories import RoleFactory, PermissionFactory
@@ -271,3 +272,87 @@ class StaffCannotCreateUserTest(APITestCase):
         # Staff without user.view also gets 403
         response = self.client.get("/api/v1/users/")
         self.assertEqual(response.status_code, 403)
+
+
+class BusinessScopingTest(APITestCase):
+    """Tests that users are scoped to their business."""
+
+    def setUp(self):
+        self.business_a = Business.objects.create(name="Business A")
+        self.business_b = Business.objects.create(name="Business B")
+
+        self.manager_role = RoleFactory(name="Manager", level=50)
+        for perm_code in [
+            PermissionCode.USER_CREATE,
+            PermissionCode.USER_VIEW,
+            PermissionCode.USER_UPDATE,
+        ]:
+            perm = PermissionFactory(code=perm_code.value)
+            RolePermission.objects.create(role=self.manager_role, permission=perm)
+
+        self.manager_a = User.objects.create_user(
+            email="manager-a@example.com",
+            password="password123",
+            first_name="Manager",
+            last_name="Alpha",
+            role=self.manager_role,
+            business=self.business_a,
+        )
+        self.manager_b = User.objects.create_user(
+            email="manager-b@example.com",
+            password="password123",
+            first_name="Manager",
+            last_name="Beta",
+            role=self.manager_role,
+            business=self.business_b,
+        )
+
+        User.objects.create_user(
+            email="staff-a@example.com",
+            password="password123",
+            first_name="Staff",
+            last_name="Alpha",
+            business=self.business_a,
+        )
+        User.objects.create_user(
+            email="staff-b@example.com",
+            password="password123",
+            first_name="Staff",
+            last_name="Beta",
+            business=self.business_b,
+        )
+
+    def test_manager_sees_only_own_business_users(self):
+        self.client.force_authenticate(user=self.manager_a)
+        response = self.client.get("/api/v1/users/")
+        self.assertEqual(response.status_code, 200)
+        emails = [u["email"] for u in response.data]
+        self.assertIn("manager-a@example.com", emails)
+        self.assertIn("staff-a@example.com", emails)
+        self.assertNotIn("manager-b@example.com", emails)
+        self.assertNotIn("staff-b@example.com", emails)
+
+    def test_manager_cannot_create_user_in_other_business(self):
+        self.client.force_authenticate(user=self.manager_a)
+        response = self.client.post(
+            "/api/v1/users/",
+            {
+                "email": "intruder@example.com",
+                "password": "password123",
+                "first_name": "Intruder",
+                "last_name": "User",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        new_user = User.objects.get(email="intruder@example.com")
+        self.assertEqual(new_user.business, self.business_a)
+
+    def test_manager_cannot_update_user_in_other_business(self):
+        self.client.force_authenticate(user=self.manager_a)
+        response = self.client.patch(
+            f"/api/v1/users/{self.manager_b.id}/",
+            {"first_name": "Hacked"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 404)
