@@ -356,3 +356,35 @@ class VerifyEmailSerializer(serializers.Serializer):
         user.save(update_fields=["email_verified"])
 
         token_instance.mark_used()
+
+        self._send_welcome_email(user)
+
+    def _send_welcome_email(self, user):
+        from django.conf import settings
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+
+        domain = settings.ALLOWED_HOSTS[0] if settings.ALLOWED_HOSTS else "localhost"
+        context = {"user": user, "domain": domain}
+
+        try:
+            subject = render_to_string(
+                "welcome/email_subject.txt", context
+            ).strip()
+            html_body = render_to_string(
+                "welcome/email_body.html", context
+            )
+            text_body = render_to_string(
+                "welcome/email_body.txt", context
+            )
+            send_mail(
+                subject=subject,
+                message=text_body,
+                html_message=html_body,
+                from_email=None,
+                recipient_list=[user.email],
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send welcome email to %s", user.email
+            )
