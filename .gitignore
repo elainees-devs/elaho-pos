@@ -53,6 +53,21 @@ htmlcov/
 .coverage
 .pytest_cache/
 # =========================
+# Frontend / Node.js
+# =========================
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+output/
+*.tsbuildinfo
+
+# Frontend env
+frontend/.env
+frontend/.env.*
+
+# =========================
 # Docker (optional)
 # =========================
 docker-compose.override.yml
