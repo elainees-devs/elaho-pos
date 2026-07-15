@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -18,6 +20,8 @@ from .throttles import (
     PasswordResetRequestThrottle,
     ResendVerificationThrottle,
 )
+
+audit_logger = logging.getLogger("audit")
 
 
 class LoginView(APIView):
@@ -157,7 +161,17 @@ class SendVerificationView(APIView):
             data=request.data, context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
+
+        already_verified = request.user.email_verified
         serializer.save()
+
+        audit_logger.info(
+            "verification_requested user_id=%s email=%s already_verified=%s ip=%s",
+            request.user.pk,
+            request.user.email,
+            already_verified,
+            request.META.get("REMOTE_ADDR", ""),
+        )
 
         return Response(
             {
@@ -180,17 +194,42 @@ class VerifyEmailView(APIView):
 
     def post(self, request):
         serializer = VerifyEmailSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception:
+            email = request.data.get("email", "")
+            audit_logger.info(
+                "verification_failed email=%s reason=invalid_token ip=%s",
+                email,
+                request.META.get("REMOTE_ADDR", ""),
+            )
+            raise
 
         already_verified = serializer.validated_data.get("already_verified", False)
 
         if already_verified:
+            user = serializer.validated_data.get("user")
+            audit_logger.info(
+                "verification_already_verified user_id=%s email=%s ip=%s",
+                user.pk if user else "",
+                request.data.get("email", ""),
+                request.META.get("REMOTE_ADDR", ""),
+            )
             return Response(
                 {"detail": "Email is already verified."},
                 status=status.HTTP_200_OK,
             )
 
         serializer.save()
+
+        user = serializer.validated_data.get("user")
+        audit_logger.info(
+            "verification_confirmed user_id=%s email=%s ip=%s",
+            user.pk if user else "",
+            user.email if user else "",
+            request.META.get("REMOTE_ADDR", ""),
+        )
 
         return Response(
             {"detail": "Email verified successfully."},
