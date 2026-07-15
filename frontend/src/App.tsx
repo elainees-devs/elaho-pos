@@ -1,7 +1,11 @@
+import { RouterProvider } from "react-router-dom"
+import AppProviders from "./app/providers"
+import { router } from "./app/router"
+
 export default function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <h1 className="text-2xl font-bold p-4">Elaho POS</h1>
-    </div>
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>
   )
 }
