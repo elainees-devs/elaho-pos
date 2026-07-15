@@ -7,6 +7,7 @@ from django.utils.http import urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .models import TokenPurpose, VerificationToken
 from .services import (
     ADMIN_LOCKOUT_MSG,
     LoginLockoutService,
@@ -226,3 +227,118 @@ class PasswordChangeSerializer(serializers.Serializer):
         self.user.set_password(password)
         self.user.save()
         return self.user
+
+
+class SendVerificationSerializer(serializers.Serializer):
+    """
+    Sends an email verification link to the authenticated user.
+
+    User is identified from the JWT token (request.user).
+    Always returns 200 to prevent enumeration.
+    """
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+
+        if user.email_verified:
+            return
+
+        request = self.context.get("request")
+
+        ip_address = None
+        user_agent = ""
+        if request:
+            ip_address = request.META.get("REMOTE_ADDR")
+            user_agent = request.META.get("HTTP_USER_AGENT", "")
+
+        _, raw_token = VerificationToken.create_for_user(
+            user=user,
+            purpose=TokenPurpose.EMAIL_VERIFICATION,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        protocol = self.context.get("protocol", "https")
+        domain = self.context.get("domain", "elahopos.com")
+
+        context = {
+            "user": user,
+            "token": raw_token,
+            "protocol": protocol,
+            "domain": domain,
+        }
+
+        subject = render_to_string(
+            "email_verification/email_subject.txt", context
+        ).strip()
+        html_body = render_to_string(
+            "email_verification/email_body.html", context
+        )
+        text_body = render_to_string(
+            "email_verification/email_body.txt", context
+        )
+
+        send_mail(
+            subject=subject,
+            message=text_body,
+            html_message=html_body,
+            from_email=None,
+            recipient_list=[user.email],
+        )
+
+
+class VerifyEmailSerializer(serializers.Serializer):
+    """
+    Verifies a user's email address using a token sent via email.
+
+    Validates the token and marks the user's email as verified.
+    """
+
+    token = serializers.CharField()
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+    def validate(self, attrs):
+        token = attrs["token"]
+        email = attrs["email"]
+
+        user = User.objects.filter(email=email, is_active=True).first()
+        if user is None:
+            raise serializers.ValidationError(
+                {"detail": "Invalid verification link."}
+            )
+
+        if user.email_verified:
+            attrs["user"] = user
+            attrs["already_verified"] = True
+            return attrs
+
+        token_instance = VerificationToken.validate_token(
+            user=user,
+            raw_token=token,
+            purpose=TokenPurpose.EMAIL_VERIFICATION,
+        )
+
+        if token_instance is None:
+            raise serializers.ValidationError(
+                {"detail": "Invalid or expired verification link."}
+            )
+
+        attrs["user"] = user
+        attrs["token_instance"] = token_instance
+        attrs["already_verified"] = False
+        return attrs
+
+    def save(self, **kwargs):
+        if self.validated_data.get("already_verified"):
+            return
+
+        user = self.validated_data["user"]
+        token_instance = self.validated_data["token_instance"]
+
+        user.email_verified = True
+        user.save(update_fields=["email_verified"])
+
+        token_instance.mark_used()

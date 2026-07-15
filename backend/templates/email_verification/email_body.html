@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; max-width: 480px; margin: 40px auto;">
+  <h2>Verify your email address</h2>
+  <p>Hi {{ user.first_name }},</p>
+  <p>Welcome to Elaho POS! Please verify your email address to get started.</p>
+  <p>
+    <a href="{{ protocol }}://{{ domain }}/verify-email?token={{ token }}&email={{ user.email }}"
+       style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">
+      Verify Email
+    </a>
+  </p>
+  <p style="color: #666; font-size: 14px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
+</body>
+</html>

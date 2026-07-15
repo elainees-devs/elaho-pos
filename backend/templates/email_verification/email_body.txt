@@ -1,0 +1,11 @@
+Hi {{ user.first_name }},
+
+Welcome to Elaho POS! Please verify your email address by clicking the link below:
+
+{{ protocol }}://{{ domain }}/verify-email?token={{ token }}&email={{ user.email }}
+
+This link expires in 24 hours.
+
+If you didn't create an account, you can safely ignore this email.
+
+— Elaho POS

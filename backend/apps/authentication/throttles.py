@@ -14,3 +14,13 @@ class PasswordResetConfirmThrottle(AnonRateThrottle):
 class PasswordChangeThrottle(UserRateThrottle):
     rate = "5/hour"
     scope = "password_change"
+
+
+class EmailVerificationThrottle(AnonRateThrottle):
+    rate = "10/hour"
+    scope = "email_verification"
+
+
+class ResendVerificationThrottle(UserRateThrottle):
+    rate = "3/hour"
+    scope = "resend_verification"

@@ -8,11 +8,15 @@ from .serializers import (
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    SendVerificationSerializer,
+    VerifyEmailSerializer,
 )
 from .throttles import (
+    EmailVerificationThrottle,
     PasswordChangeThrottle,
     PasswordResetConfirmThrottle,
     PasswordResetRequestThrottle,
+    ResendVerificationThrottle,
 )
 
 
@@ -132,5 +136,63 @@ class PasswordChangeView(APIView):
 
         return Response(
             {"detail": "Password changed successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class SendVerificationView(APIView):
+    """
+    POST /api/v1/auth/send-verification/
+
+    Send an email verification link to the authenticated user.
+    Always returns 200 to prevent enumeration.
+    Skips if the email is already verified.
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ResendVerificationThrottle]
+
+    def post(self, request):
+        serializer = SendVerificationSerializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {
+                "detail": "Verification email sent."
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class VerifyEmailView(APIView):
+    """
+    POST /api/v1/auth/verify-email/
+
+    Verify a user's email address using a token from the verification email.
+    Always returns 200 if already verified. Returns 400 for invalid tokens.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [EmailVerificationThrottle]
+
+    def post(self, request):
+        serializer = VerifyEmailSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        already_verified = serializer.validated_data.get("already_verified", False)
+
+        if already_verified:
+            return Response(
+                {"detail": "Email is already verified."},
+                status=status.HTTP_200_OK,
+            )
+
+        serializer.save()
+
+        return Response(
+            {"detail": "Email verified successfully."},
             status=status.HTTP_200_OK,
         )
