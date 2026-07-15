@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -13,6 +15,8 @@ from .services import (
     LoginLockoutService,
     POST_LOCKOUT_FAIL_MSG,
 )
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -158,13 +162,18 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         html_body = render_to_string("password_reset/email_body.html", context)
         text_body = render_to_string("password_reset/email_body.txt", context)
 
-        send_mail(
-            subject=subject,
-            message=text_body,
-            html_message=html_body,
-            from_email=None,
-            recipient_list=[user.email],
-        )
+        try:
+            send_mail(
+                subject=subject,
+                message=text_body,
+                html_message=html_body,
+                from_email=None,
+                recipient_list=[user.email],
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send password reset email to %s", user.email
+            )
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
@@ -278,13 +287,18 @@ class SendVerificationSerializer(serializers.Serializer):
             "email_verification/email_body.txt", context
         )
 
-        send_mail(
-            subject=subject,
-            message=text_body,
-            html_message=html_body,
-            from_email=None,
-            recipient_list=[user.email],
-        )
+        try:
+            send_mail(
+                subject=subject,
+                message=text_body,
+                html_message=html_body,
+                from_email=None,
+                recipient_list=[user.email],
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send verification email to %s", user.email
+            )
 
 
 class VerifyEmailSerializer(serializers.Serializer):
