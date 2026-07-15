@@ -100,6 +100,17 @@ class User(AbstractUser):
     # Relationships
     # ------------------------------------------------------------------
 
+    # Business this user belongs to.
+    business = models.ForeignKey(
+        "businesses.Business",
+        on_delete=models.PROTECT,
+        related_name="users",
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Business this user belongs to.",
+    )
+
     # Business role assigned to the user.
     # Authorization is resolved elsewhere.
     role = models.ForeignKey(
