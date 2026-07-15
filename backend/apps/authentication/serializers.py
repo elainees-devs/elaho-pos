@@ -267,8 +267,12 @@ class SendVerificationSerializer(serializers.Serializer):
             user_agent=user_agent,
         )
 
-        protocol = self.context.get("protocol", "https")
-        domain = self.context.get("domain", "elahopos.com")
+        request = self.context.get("request")
+        protocol = "https"
+        domain = "localhost"
+        if request:
+            protocol = request.scheme
+            domain = request.get_host()
 
         context = {
             "user": user,
@@ -360,12 +364,16 @@ class VerifyEmailSerializer(serializers.Serializer):
         self._send_welcome_email(user)
 
     def _send_welcome_email(self, user):
-        from django.conf import settings
         from django.core.mail import send_mail
         from django.template.loader import render_to_string
 
-        domain = settings.ALLOWED_HOSTS[0] if settings.ALLOWED_HOSTS else "localhost"
-        context = {"user": user, "domain": domain}
+        request = self.context.get("request")
+        protocol = "https"
+        domain = "localhost"
+        if request:
+            protocol = request.scheme
+            domain = request.get_host()
+        context = {"user": user, "protocol": protocol, "domain": domain}
 
         try:
             subject = render_to_string(

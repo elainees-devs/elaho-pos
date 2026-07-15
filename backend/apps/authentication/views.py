@@ -193,7 +193,9 @@ class VerifyEmailView(APIView):
     throttle_classes = [EmailVerificationThrottle]
 
     def post(self, request):
-        serializer = VerifyEmailSerializer(data=request.data)
+        serializer = VerifyEmailSerializer(
+            data=request.data, context={"request": request}
+        )
 
         try:
             serializer.is_valid(raise_exception=True)
