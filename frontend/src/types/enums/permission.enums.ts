@@ -36,11 +36,6 @@ export enum PermissionCode {
     SALE_UPDATE = "sale.update",
     SALE_DELETE = "sale.delete",
 
-    // Customers
-    CUSTOMER_CREATE = "customer.create",
-    CUSTOMER_VIEW = "customer.view",
-    CUSTOMER_UPDATE = "customer.update",
-    CUSTOMER_DELETE = "customer.delete",
 
     //  Suppliers
     SUPPLIER_CREATE = "supplier.create",
