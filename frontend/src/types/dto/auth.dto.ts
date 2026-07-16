@@ -25,3 +25,8 @@ export interface PasswordChangeDTO {
   current_password: string;
   new_password: string;
 }
+
+export interface AuthTokens{
+  access: string;
+  refresh: string;
+}
