@@ -43,8 +43,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (payload) => {
     set({ isRegistering: true, registerError: null, registerSuccess: false });
     try {
-      await userService.create(payload);
-      set({ registerSuccess: true });
+      const response = await userService.create(payload);
+
+      set({
+        user: response.user,
+        tokens: response.tokens,
+        isAuthenticated: true,
+        registerSuccess: true,
+      });
     } catch (error) {
       const err = error as AxiosError<{
         detail?: string;
@@ -65,4 +71,5 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   resetRegistrationState: () =>
     set({ registerError: null, registerSuccess: false }),
-}));
+}))
+
