@@ -6,4 +6,6 @@ export const ROUTES = {
   USERS: "/users",
   USER_CREATE: "/users/create",
   USER_EDIT: "/users/:id/edit",
+  LOGIN: "/login",
+  REGISTER: "/register/"
 } as const
