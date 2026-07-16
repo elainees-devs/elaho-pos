@@ -1,0 +1,1 @@
+// Auto-verifies on mount, shows result
