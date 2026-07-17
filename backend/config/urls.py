@@ -25,4 +25,10 @@ urlpatterns = [
     path("api/v1/roles/", include("apps.roles.urls")),
     path("api/v1/users/", include("apps.users.urls")),
     path("api/v1/businesses/", include("apps.businesses.urls")),
+
+    # ------------------------------------------------------------------
+    # Payments & Subscriptions
+    # ------------------------------------------------------------------
+
+    path("api/v1/payments/", include("apps.payments.urls")),
 ]
