@@ -4,12 +4,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.mail import send_mail
+from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import TokenPurpose, VerificationToken
+from apps.roles.models import Role
+from .models import TokenPurpose, UserInvitation, VerificationToken
 from .services import (
     ADMIN_LOCKOUT_MSG,
     LoginLockoutService,
@@ -387,3 +389,251 @@ class VerifyEmailSerializer(serializers.Serializer):
             logger.exception(
                 "Failed to send welcome email to %s", user.email
             )
+
+
+class InviteUserSerializer(serializers.Serializer):
+    """
+    Sends an invitation email to a new user on behalf of the business owner.
+
+    Creates a UserInvitation record (hashed token) and dispatches the email.
+    The invited user has 48 hours to complete registration.
+    """
+
+    email = serializers.EmailField()
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.filter(is_active=True)
+    )
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+    def validate(self, attrs):
+        email = attrs["email"]
+        request = self.context["request"]
+        business = getattr(request.user, "business", None)
+
+        if business is None:
+            raise serializers.ValidationError(
+                {"detail": "Your account is not associated with a business."}
+            )
+
+        if get_user_model().objects.filter(
+            email=email, business=business
+        ).exists():
+            raise serializers.ValidationError(
+                {"email": "A user with this email already exists in your business."}
+            )
+
+        attrs["business"] = business
+        return attrs
+
+    def save(self, **kwargs):
+        request = self.context["request"]
+        email = self.validated_data["email"]
+        role = self.validated_data["role"]
+        business = self.validated_data["business"]
+        ip_address = request.META.get("REMOTE_ADDR")
+
+        _, raw_token = UserInvitation.create_invitation(
+            email=email,
+            role=role,
+            business=business,
+            invited_by=request.user,
+            ip_address=ip_address,
+        )
+
+        protocol = request.scheme
+        domain = request.get_host()
+
+        context = {
+            "invited_by": request.user,
+            "business": business,
+            "token": raw_token,
+            "protocol": protocol,
+            "domain": domain,
+        }
+
+        subject = render_to_string(
+            "invitation/email_subject.txt", context
+        ).strip()
+        html_body = render_to_string("invitation/email_body.html", context)
+        text_body = render_to_string("invitation/email_body.txt", context)
+
+        try:
+            send_mail(
+                subject=subject,
+                message=text_body,
+                html_message=html_body,
+                from_email=None,
+                recipient_list=[email],
+            )
+        except Exception:
+            logger.exception("Failed to send invitation email to %s", email)
+
+
+class ValidateInviteSerializer(serializers.Serializer):
+    """
+    Validates an invitation token and returns the prefill data
+    (email, role name, business name) for the registration form.
+    """
+
+    token = serializers.CharField()
+
+    def validate(self, attrs):
+        invitation = UserInvitation.validate_token(attrs["token"])
+
+        if invitation is None:
+            raise serializers.ValidationError(
+                {"detail": "Invalid or expired invitation link."}
+            )
+
+        attrs["invitation"] = invitation
+        return attrs
+
+
+class RegisterFromInviteSerializer(serializers.Serializer):
+    """
+    Creates a new user account from a valid invitation token.
+
+    On success the invitation is marked as used and the new user's
+    email is pre-verified (they proved ownership by clicking the link).
+    """
+
+    token = serializers.CharField()
+    first_name = serializers.CharField(max_length=50)
+    last_name = serializers.CharField(max_length=50)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True)
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def validate(self, attrs):
+        invitation = UserInvitation.validate_token(attrs["token"])
+
+        if invitation is None:
+            raise serializers.ValidationError(
+                {"detail": "Invalid or expired invitation link."}
+            )
+
+        if get_user_model().objects.filter(email=invitation.email).exists():
+            raise serializers.ValidationError(
+                {"detail": "An account with this email already exists."}
+            )
+
+        attrs["invitation"] = invitation
+        return attrs
+
+    def save(self, **kwargs):
+        invitation = self.validated_data["invitation"]
+
+        with transaction.atomic():
+            user = get_user_model().objects.create_user(
+                email=invitation.email,
+                password=self.validated_data["password"],
+                first_name=self.validated_data["first_name"],
+                last_name=self.validated_data["last_name"],
+                phone=self.validated_data.get("phone", ""),
+                business=invitation.business,
+                role=invitation.role,
+                email_verified=True,
+            )
+            invitation.mark_used()
+
+        return user
+
+
+class RegisterBusinessSerializer(serializers.Serializer):
+    """
+    Admin-assisted business registration.
+
+    Creates a new Business and its owner User in a single transaction.
+    This flow must be initiated by a superadmin.
+    """
+
+    # Business fields
+    business_name = serializers.CharField(max_length=100)
+    business_phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    business_email = serializers.EmailField(required=False, allow_blank=True)
+    business_address = serializers.CharField(required=False, allow_blank=True)
+    kra_pin = serializers.CharField(max_length=20)
+
+    # Owner fields
+    first_name = serializers.CharField(max_length=50)
+    last_name = serializers.CharField(max_length=50)
+    email = serializers.EmailField()
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True)
+
+    def validate_business_name(self, value):
+        return value.strip()
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+    def validate_business_email(self, value):
+        if value:
+            return value.strip().lower()
+        return value
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def validate_kra_pin(self, value):
+        return value.strip()
+
+    def validate(self, attrs):
+        email = attrs["email"]
+
+        if get_user_model().objects.filter(email=email).exists():
+            raise serializers.ValidationError(
+                {"email": "An account with this email already exists."}
+            )
+
+        from apps.businesses.models import Business
+
+        if Business.objects.filter(name__iexact=attrs["business_name"]).exists():
+            raise serializers.ValidationError(
+                {"business_name": "A business with this name already exists."}
+            )
+
+        return attrs
+
+    def save(self, **kwargs):
+        from apps.businesses.models import Business
+        from apps.roles.models import Role
+
+        with transaction.atomic():
+            business = Business.objects.create(
+                name=self.validated_data["business_name"],
+                phone=self.validated_data.get("business_phone", ""),
+                email=self.validated_data.get("business_email", ""),
+                address=self.validated_data.get("business_address", ""),
+                kra_pin=self.validated_data["kra_pin"],
+            )
+
+            owner_role, _ = Role.objects.get_or_create(
+                name="Owner",
+                defaults={
+                    "description": "Business owner with full access",
+                    "level": 100,
+                },
+            )
+
+            user = get_user_model().objects.create_user(
+                email=self.validated_data["email"],
+                password=self.validated_data["password"],
+                first_name=self.validated_data["first_name"],
+                last_name=self.validated_data["last_name"],
+                phone=self.validated_data.get("phone", ""),
+                business=business,
+                role=owner_role,
+                email_verified=True,
+            )
+
+            business.owner = user
+            business.save(update_fields=["owner"])
+
+        return user
