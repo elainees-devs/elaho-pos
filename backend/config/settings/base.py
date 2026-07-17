@@ -32,6 +32,8 @@ LOCAL_APPS = [
     "apps.roles",
     "apps.authentication",
     "apps.businesses",
+    "apps.subscriptions",
+    "apps.payments",
     "apps.inventory",
     "apps.sales",
     "apps.expenses",
