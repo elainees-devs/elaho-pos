@@ -65,7 +65,7 @@ class Business(models.Model):
     )
 
     email = models.EmailField(
-        blank=True,
+        blank=False,
         help_text="Business contact email address.",
     )
 
@@ -147,3 +147,64 @@ class Business(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Branch(models.Model):
+    """
+    Branch model.
+
+    Responsibility:
+        Represent a physical location or outlet of a business.
+        Each business has at least one default branch.
+    """
+
+    business = models.ForeignKey(
+        Business,
+        on_delete=models.CASCADE,
+        related_name="branches",
+        db_index=True,
+        help_text="Business this branch belongs to.",
+    )
+
+    name = models.CharField(
+        max_length=100,
+        help_text="Branch name.",
+    )
+
+    is_default = models.BooleanField(
+        default=False,
+        help_text="Whether this is the default branch.",
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this branch is active.",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Creation timestamp.",
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Last modification timestamp.",
+    )
+
+    history = HistoricalRecords()
+
+    class Meta:
+        db_table = "branches"
+        ordering = ["name"]
+        verbose_name = "Branch"
+        verbose_name_plural = "Branches"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["business", "name"],
+                name="unique_branch_name_per_business",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.business.name})"
