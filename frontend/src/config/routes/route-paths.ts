@@ -5,6 +5,7 @@ export const ROUTES = {
   RESET_PASSWORD: "/reset-password",
   LOGIN: "/login",
   REGISTER: "/register",
+  REGISTER_BUSINESS: "/register-business",
 
   // Dashboard
   DASHBOARD: "/",

@@ -2,6 +2,7 @@ import { Navigate, RouteObject } from "react-router-dom";
 
 import { ROUTES } from "@/config/routes/route-paths";
 import AuthLayout from "@/features/auth/layouts/auth-layout";
+import RegisterBusinessPage from "@/features/auth/pages/register-business-page";
 import RegisterUserPage from "@/features/auth/pages/register-user-page";
 
 const AUTH_BASE_PATH = "/auth";
@@ -45,6 +46,10 @@ export const authRoutes: RouteObject[] = [
 			{
 				path: childPath(ROUTES.REGISTER),
 				element: <RegisterUserPage />,
+			},
+			{
+				path: childPath(ROUTES.REGISTER_BUSINESS),
+				element: <RegisterBusinessPage />,
 			},
 			{
 				path: childPath(ROUTES.FORGOT_PASSWORD),
