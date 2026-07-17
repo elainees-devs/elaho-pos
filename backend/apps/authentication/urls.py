@@ -5,7 +5,10 @@ from .views import (
     PasswordChangeView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
+    RegisterBusinessView,
+    RegisterFromInviteView,
     SendVerificationView,
+    ValidateInviteView,
     VerifyEmailView,
 )
 
@@ -41,5 +44,20 @@ urlpatterns = [
         "password-change/",
         PasswordChangeView.as_view(),
         name="password_change",
+    ),
+    path(
+        "invite/validate/",
+        ValidateInviteView.as_view(),
+        name="invite_validate",
+    ),
+    path(
+        "register/",
+        RegisterFromInviteView.as_view(),
+        name="register_from_invite",
+    ),
+    path(
+        "register-business/",
+        RegisterBusinessView.as_view(),
+        name="register_business",
     ),
 ]
