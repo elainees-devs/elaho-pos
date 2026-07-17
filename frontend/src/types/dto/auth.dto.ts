@@ -30,3 +30,22 @@ export interface AuthTokens{
   access: string;
   refresh: string;
 }
+
+export interface InviteUserDTO {
+  email: string;
+  role: number;
+}
+
+export interface ValidateInviteResponse {
+  email: string;
+  role: string;
+  business_name: string;
+}
+
+export interface RegisterFromInviteDTO {
+  token: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  password: string;
+}
