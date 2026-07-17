@@ -43,6 +43,14 @@ export enum PermissionCode {
     SUPPLIER_UPDATE = "supplier.update",
     SUPPLIER_DELETE = "supplier.delete",
 
+    // Payments
+    PAYMENT_CREATE = "payment.create",
+    PAYMENT_VIEW = "payment.view",
+    PAYMENT_UPDATE = "payment.update",
+    PAYMENT_DELETE = "payment.delete",
+    PAYMENT_VERIFY = "payment.verify",
+    PAYMENT_MANAGE = "payment.manage",
+
 
     PERM_CACHE_PREFIX = "perm_codes_", //  Prefix used for caching user permission codes.
 

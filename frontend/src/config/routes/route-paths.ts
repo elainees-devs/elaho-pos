@@ -9,6 +9,9 @@ export const ROUTES = {
   // Dashboard
   DASHBOARD: "/",
 
+  // Payments (Super Admin)
+  PAYMENTS: "/payments",
+
   // Sales
   POS: "/pos",
   CUSTOMERS: "/customers",

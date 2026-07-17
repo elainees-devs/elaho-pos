@@ -1,0 +1,14 @@
+Hi {{ owner_name }},
+
+Your payment for {{ business_name }} has been verified.
+
+You can now set up your business account on Elaho POS.
+
+Set up your account here:
+{{ protocol }}://{{ domain }}/register?token={{ token }}
+
+This link expires in 48 hours.
+
+If you weren't expecting this email, you can safely ignore it.
+
+— Elaho POS

@@ -13,6 +13,7 @@ import {
     KeyRound,
     Bell,
     Settings,
+    CreditCard,
 } from "lucide-react"
 
 import type { SidebarMenuItem } from "@/types/navigation/sidebar.types"
@@ -27,6 +28,15 @@ export const SIDEBAR_MENU_CONFIG: SidebarMenuItem[] = [
         group: "main",
         order: 1,
         requiredPermissions: [PermissionCode.DASHBOARD_VIEW],
+    },
+    {
+        id: "payments",
+        label: "Payments",
+        icon: CreditCard,
+        path: "/payments",
+        group: "main",
+        order: 2,
+        requiredPermissions: [PermissionCode.PAYMENT_VIEW],
     },
     {
         id: "pos",

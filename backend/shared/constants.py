@@ -58,6 +58,20 @@ class PermissionCode(str, Enum):
     SUPPLIER_UPDATE = "supplier.update"
     SUPPLIER_DELETE = "supplier.delete"
 
+    # Payments (Super Admin only)
+    PAYMENT_CREATE = "payment.create"
+    PAYMENT_VIEW = "payment.view"
+    PAYMENT_UPDATE = "payment.update"
+    PAYMENT_DELETE = "payment.delete"
+    PAYMENT_VERIFY = "payment.verify"
+    PAYMENT_CANCEL = "payment.cancel"
+    PAYMENT_REFUND = "payment.refund"
+    PAYMENT_MANAGE = "payment.manage"
+
+    # Subscriptions
+    SUBSCRIPTION_VIEW = "subscription.view"
+    SUBSCRIPTION_MANAGE = "subscription.manage"
+
 
 PERM_CACHE_PREFIX = "perm_codes_"
 PERM_CACHE_TTL = 300

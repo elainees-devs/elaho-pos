@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; max-width: 480px; margin: 40px auto;">
+  <h2>Welcome to Elaho POS, {{ owner_name }}!</h2>
+  <p>Hi {{ owner_name }},</p>
+  <p>
+    Your payment for <strong>{{ business_name }}</strong> has been verified.
+    You can now set up your business account on <strong>Elaho POS</strong>.
+  </p>
+  <p>Click the button below to complete your registration. This link expires in 48 hours.</p>
+  <p>
+    <a href="{{ protocol }}://{{ domain }}/register?token={{ token }}"
+       style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">
+      Set Up My Account
+    </a>
+  </p>
+  <p style="color: #666; font-size: 14px;">
+    If you weren't expecting this email, you can safely ignore it.
+  </p>
+  <p style="color: #666; font-size: 14px;">— Elaho POS</p>
+</body>
+</html>
