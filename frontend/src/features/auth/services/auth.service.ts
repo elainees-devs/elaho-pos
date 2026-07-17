@@ -1,5 +1,4 @@
 import httpClient from "@/services/http/client";
-import type { RegisterBusinessDTO } from "@/types/dto/business.dto";
 import {
   PasswordChangeDTO,
   PasswordResetConfirmDTO,
@@ -33,9 +32,4 @@ export const authService = {
     httpClient.post("/auth/password-change/", data);
   },
 
-  registerBusiness: (data: RegisterBusinessDTO) =>
-    httpClient.post<{ access: string; refresh: string }>(
-      "/auth/register-business/",
-      data
-    ),
 };
