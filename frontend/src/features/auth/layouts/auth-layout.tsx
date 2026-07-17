@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { Store } from "lucide-react";
 
 import { ROUTES } from "@/config/routes/route-paths";
+import { useAuth } from "@/contexts/auth/auth.context";
 
 type Language = "en" | "fr" | "sw";
 
@@ -21,28 +22,19 @@ function getInitialLanguage(): Language {
 	return "en";
 }
 
-function getIsAuthenticated(): boolean {
-	if (typeof window === "undefined") {
-		return false;
-	}
-
-	// Temporary guard until auth context/store is wired.
-	return Boolean(
-		window.localStorage.getItem("access_token") ||
-			window.localStorage.getItem("tokens")
-	);
-}
-
 export default function AuthLayout() {
 	const [language, setLanguage] = useState<Language>(getInitialLanguage);
-
-	const isAuthenticated = useMemo(() => getIsAuthenticated(), []);
+	const { isAuthenticated, isLoading } = useAuth();
 
 	useEffect(() => {
 		document.documentElement.lang = language;
 		document.documentElement.dir = "ltr";
 		window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
 	}, [language]);
+
+	if (isLoading) {
+		return null;
+	}
 
 	if (isAuthenticated) {
 		return <Navigate to={ROUTES.DASHBOARD} replace />;

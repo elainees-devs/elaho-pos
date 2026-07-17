@@ -101,10 +101,7 @@ export default function RegisterUserPage() {
     };
 
     try {
-      const tokens = await inviteService.register(payload);
-      // Store tokens then redirect to login
-      localStorage.setItem("access_token", tokens.access);
-      localStorage.setItem("refresh_token", tokens.refresh);
+      await inviteService.register(payload);
       setStatus("success");
       setTimeout(() => navigate(ROUTES.LOGIN, { replace: true }), 2000);
     } catch (err: unknown) {

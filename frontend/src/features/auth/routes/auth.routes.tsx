@@ -2,16 +2,14 @@ import { Navigate, RouteObject } from "react-router-dom";
 
 import { ROUTES } from "@/config/routes/route-paths";
 import AuthLayout from "@/features/auth/layouts/auth-layout";
+import LoginPagePlaceholder from "@/features/auth/pages/login-page";
 import RegisterBusinessPage from "@/features/auth/pages/register-business-page";
 import RegisterUserPage from "@/features/auth/pages/register-user-page";
 
 const AUTH_BASE_PATH = "/auth";
 
-const childPath = (path: string) => path.replace(/^\//, "");
+const childPath = (path: string) => path.replace(/^\/auth\//, "").replace(/^\//, "");
 
-// TODO(auth): Replace these placeholders with the actual page components
-// once they are implemented.
-const LoginPagePlaceholder = () => <div>Login Page - TODO</div>;
 const ForgotPasswordPagePlaceholder = () => (
 	<div>Forgot Password Page - TODO</div>
 );
@@ -20,9 +18,6 @@ const ResetPasswordPagePlaceholder = () => (
 );
 const VerifyEmailPagePlaceholder = () => (
 	<div>Verify Email Page - TODO</div>
-);
-const VerificationSentPagePlaceholder = () => (
-	<div>Email Verification Sent Page - TODO</div>
 );
 
 export const authRoutes: RouteObject[] = [
@@ -34,7 +29,7 @@ export const authRoutes: RouteObject[] = [
 				index: true,
 				element: (
 					<Navigate
-						to={childPath(ROUTES.LOGIN)}
+						to={ROUTES.LOGIN}
 						replace
 					/>
 				),
@@ -64,14 +59,10 @@ export const authRoutes: RouteObject[] = [
 				element: <VerifyEmailPagePlaceholder />,
 			},
 			{
-				path: childPath(ROUTES.VERIFY_EMAIL),
-				element: <VerificationSentPagePlaceholder />,
-			},
-			{
 				path: "*",
 				element: (
 					<Navigate
-						to={childPath(ROUTES.LOGIN)}
+						to={ROUTES.LOGIN}
 						replace
 					/>
 				),

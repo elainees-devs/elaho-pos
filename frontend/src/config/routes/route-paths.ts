@@ -1,11 +1,11 @@
 export const ROUTES = {
-  // Auth
-  VERIFY_EMAIL: "/verify-email",
-  FORGOT_PASSWORD: "/forgot-password",
-  RESET_PASSWORD: "/reset-password",
-  LOGIN: "/login",
-  REGISTER: "/register",
-  REGISTER_BUSINESS: "/register-business",
+  // Auth (all nested under /auth)
+  LOGIN: "/auth/login",
+  REGISTER: "/auth/register",
+  REGISTER_BUSINESS: "/auth/register-business",
+  FORGOT_PASSWORD: "/auth/forgot-password",
+  RESET_PASSWORD: "/auth/reset-password",
+  VERIFY_EMAIL: "/auth/verify-email",
 
   // Dashboard
   DASHBOARD: "/",
