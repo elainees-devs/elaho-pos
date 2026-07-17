@@ -55,6 +55,17 @@ ROLE_PERMISSIONS = {
         PermissionCode.SUPPLIER_VIEW,
         PermissionCode.SUPPLIER_UPDATE,
         PermissionCode.SUPPLIER_DELETE,
+        # Payments
+        PermissionCode.PAYMENT_CREATE,
+        PermissionCode.PAYMENT_VIEW,
+        PermissionCode.PAYMENT_UPDATE,
+        PermissionCode.PAYMENT_DELETE,
+        PermissionCode.PAYMENT_VERIFY,
+        PermissionCode.PAYMENT_CANCEL,
+        PermissionCode.PAYMENT_REFUND,
+        # Subscriptions
+        PermissionCode.SUBSCRIPTION_VIEW,
+        PermissionCode.SUBSCRIPTION_MANAGE,
     ],
     "Manager": [
         # User management (can create and manage staff)
