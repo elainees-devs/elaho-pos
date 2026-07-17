@@ -11,6 +11,7 @@ from simple_history.models import HistoricalRecords
 User = get_user_model()
 
 TOKEN_EXPIRY_HOURS = getattr(settings, "VERIFICATION_TOKEN_EXPIRY_HOURS", 24)
+INVITE_EXPIRY_HOURS = getattr(settings, "INVITATION_EXPIRY_HOURS", 48)
 
 
 class TokenPurpose(models.TextChoices):
@@ -251,3 +252,185 @@ class VerificationToken(models.Model):
         Human-readable representation of the token.
         """
         return f"{self.get_purpose_display()} for {self.user}"
+
+
+class UserInvitation(models.Model):
+    """
+    UserInvitation model.
+
+    Responsibility:
+        Store a hashed invitation token sent by a business owner to a new
+        user before that user's account exists.
+
+    The invitation carries the target email, role, and business so that
+    the registration endpoint can create the user without additional input
+    from the inviter.
+
+    Tokens are stored as SHA-256 hashes. The raw token is sent via email
+    and never persisted in plaintext.
+    """
+
+    # ------------------------------------------------------------------
+    # Token
+    # ------------------------------------------------------------------
+
+    token_hash = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="SHA-256 hash of the raw invitation token.",
+    )
+
+    # ------------------------------------------------------------------
+    # Invitation Target
+    # ------------------------------------------------------------------
+
+    email = models.EmailField(
+        db_index=True,
+        help_text="Email address of the invited user.",
+    )
+
+    role = models.ForeignKey(
+        "roles.Role",
+        on_delete=models.CASCADE,
+        related_name="invitations",
+        help_text="Role to assign to the invited user.",
+    )
+
+    business = models.ForeignKey(
+        "businesses.Business",
+        on_delete=models.CASCADE,
+        related_name="invitations",
+        help_text="Business the invited user will belong to.",
+    )
+
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="sent_invitations",
+        help_text="User who sent this invitation.",
+    )
+
+    # ------------------------------------------------------------------
+    # Status
+    # ------------------------------------------------------------------
+
+    is_used = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Whether this invitation has been accepted.",
+    )
+
+    # ------------------------------------------------------------------
+    # Expiry
+    # ------------------------------------------------------------------
+
+    expires_at = models.DateTimeField(
+        help_text="Timestamp after which this invitation is no longer valid.",
+    )
+
+    # ------------------------------------------------------------------
+    # Audit
+    # ------------------------------------------------------------------
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Creation timestamp.",
+    )
+
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        help_text="IP address of the requester.",
+    )
+
+    class Meta:
+        db_table = "user_invitations"
+        ordering = ["-created_at"]
+        verbose_name = "User Invitation"
+        verbose_name_plural = "User Invitations"
+
+    # ------------------------------------------------------------------
+    # Token Operations
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def generate_raw_token() -> str:
+        return secrets.token_urlsafe(32)
+
+    @staticmethod
+    def hash_token(raw_token: str) -> str:
+        return hashlib.sha256(raw_token.encode()).hexdigest()
+
+    def is_valid(self) -> bool:
+        return not self.is_used and timezone.now() < self.expires_at
+
+    def mark_used(self) -> None:
+        self.is_used = True
+        self.save(update_fields=["is_used"])
+
+    # ------------------------------------------------------------------
+    # Convenience Constructors
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def create_invitation(
+        cls,
+        email: str,
+        role,
+        business,
+        invited_by,
+        ip_address: str | None = None,
+        expiry_hours: int | None = None,
+    ) -> tuple["UserInvitation", str]:
+        """
+        Create an invitation token for the given email + business.
+
+        Invalidates any existing pending invitations for the same
+        email + business to prevent stale links.
+        Returns (instance, raw_token).
+        """
+        hours = expiry_hours or INVITE_EXPIRY_HOURS
+
+        cls.objects.filter(
+            email__iexact=email,
+            business=business,
+            is_used=False,
+        ).update(is_used=True)
+
+        raw_token = cls.generate_raw_token()
+        token_hash = cls.hash_token(raw_token)
+
+        instance = cls.objects.create(
+            token_hash=token_hash,
+            email=email.strip().lower(),
+            role=role,
+            business=business,
+            invited_by=invited_by,
+            expires_at=timezone.now() + timedelta(hours=hours),
+            ip_address=ip_address,
+        )
+
+        return instance, raw_token
+
+    @classmethod
+    def validate_token(cls, raw_token: str) -> "UserInvitation | None":
+        """
+        Validate a raw token. Returns the invitation instance or None.
+        Eagerly loads role and business for downstream use.
+        """
+        token_hash = cls.hash_token(raw_token)
+
+        try:
+            instance = cls.objects.select_related("role", "business").get(
+                token_hash=token_hash,
+                is_used=False,
+            )
+        except cls.DoesNotExist:
+            return None
+
+        return instance if instance.is_valid() else None
+
+    def __str__(self):
+        return f"Invitation for {self.email} ({self.business})"
