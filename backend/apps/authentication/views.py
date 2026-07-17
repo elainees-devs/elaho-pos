@@ -4,13 +4,18 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from shared.permission import IsSuperAdmin
 
 from .serializers import (
     LoginSerializer,
     PasswordChangeSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
+    RegisterBusinessSerializer,
+    RegisterFromInviteSerializer,
     SendVerificationSerializer,
+    ValidateInviteSerializer,
     VerifyEmailSerializer,
 )
 from .throttles import (
@@ -18,6 +23,8 @@ from .throttles import (
     PasswordChangeThrottle,
     PasswordResetConfirmThrottle,
     PasswordResetRequestThrottle,
+    RegisterBusinessThrottle,
+    RegisterFromInviteThrottle,
     ResendVerificationThrottle,
 )
 
@@ -236,4 +243,101 @@ class VerifyEmailView(APIView):
         return Response(
             {"detail": "Email verified successfully."},
             status=status.HTTP_200_OK,
+        )
+
+
+class ValidateInviteView(APIView):
+    """
+    GET /api/v1/auth/invite/validate/?token=<raw_token>
+
+    Validates an invitation token and returns prefill data for the
+    registration form. Returns 400 for invalid/expired tokens to prevent
+    enumeration.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [EmailVerificationThrottle]
+
+    def get(self, request):
+        token = request.query_params.get("token", "").strip()
+        if not token:
+            return Response(
+                {"detail": "Token is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = ValidateInviteSerializer(data={"token": token})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        invitation = serializer.validated_data["invitation"]
+        return Response(
+            {
+                "email": invitation.email,
+                "role": invitation.role.name,
+                "business_name": invitation.business.name,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class RegisterFromInviteView(APIView):
+    """
+    POST /api/v1/auth/register/
+
+    Completes user registration from a valid invitation token.
+    Returns JWT tokens on success so the user is immediately logged in.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [RegisterFromInviteThrottle]
+
+    def post(self, request):
+        serializer = RegisterFromInviteSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class RegisterBusinessView(APIView):
+    """
+    POST /api/v1/auth/register-business/
+
+    Superadmin-only business registration. Creates a new Business and
+    its owner User in a single transaction.
+    """
+
+    permission_classes = [IsSuperAdmin]
+    throttle_classes = [RegisterBusinessThrottle]
+
+    def post(self, request):
+        serializer = RegisterBusinessSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+
+        audit_logger.info(
+            "business_registered user_id=%s email=%s ip=%s",
+            user.pk,
+            user.email,
+            request.META.get("REMOTE_ADDR", ""),
+        )
+
+        return Response(
+            {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            },
+            status=status.HTTP_201_CREATED,
         )
