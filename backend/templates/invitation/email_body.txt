@@ -1,0 +1,14 @@
+Hi there,
+
+{{ invited_by.get_full_name }} has invited you to create an account on Elaho POS
+for {{ business.name }}.
+
+Click the link below to set up your account:
+
+{{ protocol }}://{{ domain }}/auth/register?token={{ token }}
+
+This link expires in 48 hours.
+
+If you weren't expecting this invitation, you can safely ignore this email.
+
+— Elaho POS

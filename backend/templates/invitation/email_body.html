@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; max-width: 480px; margin: 40px auto;">
+  <h2>You're invited to join {{ business.name }}</h2>
+  <p>Hi there,</p>
+  <p>
+    <strong>{{ invited_by.get_full_name }}</strong> has invited you to create an
+    account on <strong>Elaho POS</strong> for <strong>{{ business.name }}</strong>.
+  </p>
+  <p>Click the button below to set up your account. This link expires in 48 hours.</p>
+  <p>
+    <a href="{{ protocol }}://{{ domain }}/auth/register?token={{ token }}"
+       style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">
+      Create My Account
+    </a>
+  </p>
+  <p style="color: #666; font-size: 14px;">
+    If you weren't expecting this invitation, you can safely ignore this email.
+  </p>
+  <p style="color: #666; font-size: 14px;">— Elaho POS</p>
+</body>
+</html>
