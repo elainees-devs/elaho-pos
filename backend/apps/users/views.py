@@ -1,5 +1,9 @@
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from apps.authentication.serializers import InviteUserSerializer
 from shared.constants import PermissionCode
 from shared.permission import HasPermission, IsSuperAdmin
 
@@ -40,3 +44,27 @@ class UserViewSet(viewsets.ModelViewSet):
         elif self.action == "destroy":
             permissions.append(HasPermission(PermissionCode.USER_DELETE)())
         return permissions
+
+
+class InviteUserView(APIView):
+    """
+    POST /api/v1/users/invite/
+
+    Sends an email invitation to a new user so they can self-register.
+    Requires USER_CREATE permission. Scoped to the requester's business.
+    """
+
+    permission_classes = [IsAuthenticated, HasPermission(PermissionCode.USER_CREATE)]
+
+    def post(self, request):
+        serializer = InviteUserSerializer(
+            data=request.data, context={"request": request}
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer.save()
+        return Response(
+            {"detail": "Invitation sent successfully."},
+            status=status.HTTP_200_OK,
+        )
