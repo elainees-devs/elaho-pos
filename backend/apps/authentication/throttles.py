@@ -24,3 +24,18 @@ class EmailVerificationThrottle(AnonRateThrottle):
 class ResendVerificationThrottle(UserRateThrottle):
     rate = "3/hour"
     scope = "resend_verification"
+
+
+class InviteUserThrottle(UserRateThrottle):
+    rate = "20/hour"
+    scope = "invite_user"
+
+
+class RegisterFromInviteThrottle(AnonRateThrottle):
+    rate = "10/hour"
+    scope = "register_from_invite"
+
+
+class RegisterBusinessThrottle(AnonRateThrottle):
+    rate = "5/hour"
+    scope = "register_business"
