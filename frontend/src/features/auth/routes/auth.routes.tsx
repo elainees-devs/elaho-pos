@@ -2,6 +2,7 @@ import { Navigate, RouteObject } from "react-router-dom";
 
 import { ROUTES } from "@/config/routes/route-paths";
 import AuthLayout from "@/features/auth/layouts/auth-layout";
+import RegisterUserPage from "@/features/auth/pages/register-user-page";
 
 const AUTH_BASE_PATH = "/auth";
 
@@ -10,7 +11,6 @@ const childPath = (path: string) => path.replace(/^\//, "");
 // TODO(auth): Replace these placeholders with the actual page components
 // once they are implemented.
 const LoginPagePlaceholder = () => <div>Login Page - TODO</div>;
-const RegisterPagePlaceholder = () => <div>Register Page - TODO</div>;
 const ForgotPasswordPagePlaceholder = () => (
 	<div>Forgot Password Page - TODO</div>
 );
@@ -44,7 +44,7 @@ export const authRoutes: RouteObject[] = [
 			},
 			{
 				path: childPath(ROUTES.REGISTER),
-				element: <RegisterPagePlaceholder />,
+				element: <RegisterUserPage />,
 			},
 			{
 				path: childPath(ROUTES.FORGOT_PASSWORD),
