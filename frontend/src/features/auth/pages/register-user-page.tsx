@@ -1,66 +1,111 @@
-import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { Store, Eye, EyeOff } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, Link, useParams, Navigate } from "react-router-dom";
+import { Store, Eye, EyeOff, AlertCircle } from "lucide-react";
 
-import { inviteService } from "@/features/auth/services/invite.service";
-import type { ValidateInviteResponse, RegisterFromInviteDTO } from "@/types/dto/auth.dto";
 import { ROUTES } from "@/config/routes/route-paths";
+import { useAuth } from "@/contexts/auth/auth.context";
+import { useRegisterUser, useValidateInvitation } from "@/features/auth/hooks/use-invitation-registration";
+import {
+  invitationRegistrationSchema,
+  type InvitationRegistrationFormValues,
+} from "@/features/auth/validations/auth.validation";
+import { Button } from "@/components/ui/actions/Button";
+import { Spinner } from "@/components/ui/feedback/Spinner";
+import { EmptyState } from "@/components/ui/feedback/EmptyState";
+import { Badge } from "@/components/ui/data-display/Badge";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface FormState {
-  first_name: string;
-  last_name: string;
-  phone: string;
-  password: string;
-  confirm_password: string;
-}
-
-type PageStatus = "loading" | "invalid" | "ready" | "submitting" | "success";
+type PageStatus = "ready" | "success";
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function RegisterUserPage() {
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get("token") ?? "";
+  const { token = "" } = useParams<{ token: string }>();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const [status, setStatus] = useState<PageStatus>("loading");
-  const [invite, setInvite] = useState<ValidateInviteResponse | null>(null);
+  const [status, setStatus] = useState<PageStatus>("ready");
   const [error, setError] = useState<string>("");
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<keyof InvitationRegistrationFormValues, string>>
+  >({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const [form, setForm] = useState<FormState>({
+  const validateInvitationQuery = useValidateInvitation(token);
+  const registerMutation = useRegisterUser();
+
+  const [form, setForm] = useState<InvitationRegistrationFormValues>({
     first_name: "",
     last_name: "",
-    phone: "",
     password: "",
     confirm_password: "",
   });
 
-  // Validate token on mount
+  const invitation = validateInvitationQuery.data;
+
   useEffect(() => {
-    if (!token) {
-      setStatus("invalid");
+    if (!invitation) {
       return;
     }
 
-    inviteService
-      .validate(token)
-      .then((data) => {
-        setInvite(data);
-        setStatus("ready");
-      })
-      .catch(() => {
-        setStatus("invalid");
-      });
-  }, [token]);
+    setForm((prev) => ({
+      ...prev,
+      first_name: prev.first_name || invitation.first_name || "",
+      last_name: prev.last_name || invitation.last_name || "",
+    }));
+  }, [invitation]);
+
+  const invitationErrorMessage = useMemo(() => {
+    const detail =
+      (
+        validateInvitationQuery.error as {
+          response?: { data?: { detail?: string; message?: string } };
+          message?: string;
+        }
+      )?.response?.data?.detail ||
+      (
+        validateInvitationQuery.error as {
+          response?: { data?: { detail?: string; message?: string } };
+          message?: string;
+        }
+      )?.response?.data?.message ||
+      (
+        validateInvitationQuery.error as {
+          message?: string;
+        }
+      )?.message ||
+      "Invalid invitation";
+
+    const normalized = detail.toLowerCase();
+    if (normalized.includes("expired")) {
+      return "Invitation expired";
+    }
+    if (normalized.includes("already") || normalized.includes("used")) {
+      return "Invitation already used";
+    }
+    if (normalized.includes("network")) {
+      return "Network error while validating invitation";
+    }
+    if (normalized.includes("not found")) {
+      return "Invitation not found";
+    }
+    return "Invalid invitation";
+  }, [validateInvitationQuery.error]);
+
+  if (!authLoading && isAuthenticated && !token) {
+    return (
+      <Navigate
+        to={ROUTES.DASHBOARD}
+        replace
+      />
+    );
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -69,19 +114,22 @@ export default function RegisterUserPage() {
   }
 
   function validate(): boolean {
-    const errors: Partial<Record<keyof FormState, string>> = {};
+    const result = invitationRegistrationSchema.safeParse(form);
+    if (result.success) {
+      setFieldErrors({});
+      return true;
+    }
 
-    if (!form.first_name.trim() || form.first_name.trim().length < 2)
-      errors.first_name = "First name must be at least 2 characters.";
-    if (!form.last_name.trim() || form.last_name.trim().length < 2)
-      errors.last_name = "Last name must be at least 2 characters.";
-    if (!form.password)
-      errors.password = "Password is required.";
-    if (form.password !== form.confirm_password)
-      errors.confirm_password = "Passwords do not match.";
+    const errors: Partial<Record<keyof InvitationRegistrationFormValues, string>> = {};
+    for (const issue of result.error.issues) {
+      const key = issue.path[0] as keyof InvitationRegistrationFormValues;
+      if (!errors[key]) {
+        errors[key] = issue.message;
+      }
+    }
 
     setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    return false;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -90,25 +138,57 @@ export default function RegisterUserPage() {
 
     if (!validate()) return;
 
-    setStatus("submitting");
-
-    const payload: RegisterFromInviteDTO = {
+    const payload = {
       token,
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
-      phone: form.phone.trim() || undefined,
       password: form.password,
+      confirm_password: form.confirm_password,
     };
 
     try {
-      await inviteService.register(payload);
+      await registerMutation.mutateAsync(payload);
       setStatus("success");
+      setError("Account created successfully. Please log in.");
       setTimeout(() => navigate(ROUTES.LOGIN, { replace: true }), 2000);
     } catch (err: unknown) {
-      setStatus("ready");
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setError(detail ?? "Something went wrong. Please try again.");
+      const detail = (
+        err as {
+          response?: { data?: { detail?: string; message?: string; errors?: Record<string, string[]> } };
+          message?: string;
+        }
+      )?.response?.data;
+
+      const backendFieldErrors = detail?.errors;
+      if (backendFieldErrors) {
+        const mappedErrors: Partial<Record<keyof InvitationRegistrationFormValues, string>> = {};
+        if (backendFieldErrors.first_name?.[0]) mappedErrors.first_name = backendFieldErrors.first_name[0];
+        if (backendFieldErrors.last_name?.[0]) mappedErrors.last_name = backendFieldErrors.last_name[0];
+        if (backendFieldErrors.password?.[0]) mappedErrors.password = backendFieldErrors.password[0];
+        if (backendFieldErrors.confirm_password?.[0]) {
+          mappedErrors.confirm_password = backendFieldErrors.confirm_password[0];
+        }
+        setFieldErrors(mappedErrors);
+      }
+
+      const rawDetail = detail?.detail || detail?.message || (err as { message?: string })?.message;
+      const normalized = (rawDetail ?? "").toLowerCase();
+
+      if (normalized.includes("already") || normalized.includes("exists") || normalized.includes("duplicate")) {
+        setError("A user with this invitation details already exists.");
+      } else if (normalized.includes("weak") || normalized.includes("password")) {
+        setError("Weak password. Please follow the password requirements.");
+      } else if (normalized.includes("expired")) {
+        setError("This invitation has expired. Request a new invitation.");
+      } else if (normalized.includes("used")) {
+        setError("This invitation has already been used.");
+      } else if (normalized.includes("network")) {
+        setError("Network error. Check your connection and try again.");
+      } else if (normalized.includes("server")) {
+        setError("Server error. Please try again in a moment.");
+      } else {
+        setError(rawDetail ?? "Unexpected error occurred. Please try again.");
+      }
     }
   }
 
@@ -116,24 +196,45 @@ export default function RegisterUserPage() {
   // Render states
   // ---------------------------------------------------------------------------
 
-  if (status === "loading") {
+  if (validateInvitationQuery.isLoading || authLoading) {
     return (
       <div className="flex min-h-[300px] items-center justify-center">
-        <p className="text-slate-500 text-sm">Validating invitation…</p>
+        <div className="flex items-center gap-3 text-sm text-text-secondary">
+          <Spinner size="sm" />
+          <span>Validating invitation...</span>
+        </div>
       </div>
     );
   }
 
-  if (status === "invalid") {
+  if (!token || validateInvitationQuery.isError || !invitation || invitation.valid === false) {
     return (
-      <div className="flex flex-col items-center gap-4 py-10 text-center">
-        <p className="text-lg font-semibold text-red-600">Invalid or expired invitation link.</p>
-        <p className="text-sm text-slate-500">
-          Please ask your business owner to send a new invitation.
-        </p>
-        <Link to={ROUTES.LOGIN} className="text-sm text-blue-600 underline">
-          Back to login
-        </Link>
+      <div className="space-y-4">
+        <EmptyState
+          icon={<AlertCircle />}
+          title={invitationErrorMessage}
+          description="Please request a new invitation link or return to the login page."
+          action={
+            <Link
+              to={ROUTES.LOGIN}
+              className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            >
+              Back to Login
+            </Link>
+          }
+        />
+
+        {validateInvitationQuery.isError ? (
+          <div className="flex justify-center">
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => validateInvitationQuery.refetch()}
+            >
+              Retry Validation
+            </Button>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -141,8 +242,14 @@ export default function RegisterUserPage() {
   if (status === "success") {
     return (
       <div className="flex flex-col items-center gap-4 py-10 text-center">
-        <p className="text-lg font-semibold text-green-600">Account created successfully!</p>
-        <p className="text-sm text-slate-500">Redirecting you to login…</p>
+        <div
+          role="status"
+          className="rounded-lg border border-success/20 bg-success/10 px-4 py-3 text-sm text-success"
+        >
+          Account created successfully. Please log in.
+        </div>
+        <p className="text-lg font-semibold text-success">Account created successfully.</p>
+        <p className="text-sm text-text-secondary">Please log in. Redirecting...</p>
       </div>
     );
   }
@@ -158,11 +265,18 @@ export default function RegisterUserPage() {
       </div>
 
       <h1 className="mb-1 text-2xl font-bold text-slate-900">Create your account</h1>
-      <p className="mb-6 text-sm text-slate-500">
-        You've been invited to join{" "}
-        <span className="font-medium text-slate-700">{invite?.business_name}</span> as a{" "}
-        <span className="font-medium text-slate-700">{invite?.role}</span>.
-      </p>
+      {invitation.invitation_type === "BUSINESS_OWNER" ? (
+        <p className="mb-6 text-sm text-slate-500">
+          Welcome! Complete your business owner account to start using the system.
+        </p>
+      ) : (
+        <div className="mb-6 space-y-2 text-sm text-slate-500">
+          <p>
+            You&apos;ve been invited to join <span className="font-medium text-slate-700">{invitation.business_name}</span>
+          </p>
+          {invitation.role ? <Badge variant="info">{invitation.role}</Badge> : null}
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -176,11 +290,35 @@ export default function RegisterUserPage() {
           <label className="text-sm font-medium text-slate-700">Email</label>
           <input
             type="email"
-            value={invite?.email ?? ""}
+            value={invitation.email}
             readOnly
             className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed"
           />
         </div>
+
+        {invitation.business_name ? (
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700">Business Name</label>
+            <input
+              type="text"
+              value={invitation.business_name}
+              readOnly
+              className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed"
+            />
+          </div>
+        ) : null}
+
+        {invitation.invitation_type === "STAFF" ? (
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-slate-700">Role</label>
+            <input
+              type="text"
+              value={invitation.role ?? "N/A"}
+              readOnly
+              className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-500 cursor-not-allowed"
+            />
+          </div>
+        ) : null}
 
         {/* Name row */}
         <div className="grid grid-cols-2 gap-3">
@@ -221,23 +359,6 @@ export default function RegisterUserPage() {
               <p className="text-xs text-red-600">{fieldErrors.last_name}</p>
             )}
           </div>
-        </div>
-
-        {/* Phone – optional */}
-        <div className="flex flex-col gap-1">
-          <label htmlFor="phone" className="text-sm font-medium text-slate-700">
-            Phone <span className="text-slate-400">(optional)</span>
-          </label>
-          <input
-            id="phone"
-            name="phone"
-            type="tel"
-            autoComplete="tel"
-            value={form.phone}
-            onChange={handleChange}
-            placeholder="+254 700 000 000"
-            className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
         </div>
 
         {/* Password */}
@@ -303,11 +424,19 @@ export default function RegisterUserPage() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={status === "submitting"}
+          disabled={registerMutation.isPending}
           className="mt-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
         >
-          {status === "submitting" ? "Creating account…" : "Create account"}
+          {registerMutation.isPending ? "Creating account..." : "Create Account"}
         </button>
+
+        <Button
+          variant="ghost"
+          type="button"
+          onClick={() => navigate(ROUTES.LOGIN)}
+        >
+          Cancel
+        </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-slate-500">
