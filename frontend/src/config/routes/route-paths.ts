@@ -2,6 +2,7 @@ export const ROUTES = {
   // Auth (all nested under /auth)
   LOGIN: "/auth/login",
   REGISTER: "/auth/register",
+  REGISTER_INVITATION: "/register/:token",
   REGISTER_BUSINESS: "/auth/register-business",
   FORGOT_PASSWORD: "/auth/forgot-password",
   RESET_PASSWORD: "/auth/reset-password",
